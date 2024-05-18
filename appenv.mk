@@ -10,11 +10,11 @@ JAVAC?=javac
 
 SRC_JAVA:=$(ROOT)/src/main/java
 SRC_ROOTS:= $(SRC_JAVA)
-JVM_VERSION:=1.8
+JVM_VERSION:=11
 
 export JAVA_BUILD:=$(ROOT)/java_build
 export SRC_NATIVE:=$(ROOT)/src_native 
-export NATIVE_JAVA_UTILS_SO_VERSION:=$(shell cat $(SRC_JAVA)/appenv/test.jni/NATIVE_JAVA_UTILS_SO_VERSION)
+export NATIVE_JAVA_UTILS_SO_VERSION:=$(shell cat $(SRC_JAVA)/appenv/jni/NATIVE_JAVA_UTILS_SO_VERSION)
 
 $(info NATIVE_JAVA_UTILS_SO_VERSION $(NATIVE_JAVA_UTILS_SO_VERSION))
 
@@ -63,7 +63,7 @@ $(info MOST_RECENT_JAVA_TS $(MOST_RECENT_JAVA_TS))
 JAVA_BUILD_TS=$(shell test -d $(JAVA_BUILD) && stat -c %Y $(JAVA_BUILD) || echo 0 )
 $(info JAVA_BUILD_TS $(JAVA_BUILD_TS))
 
-REBUILD_JAVA := $(shell [ $(MOST_RECENT_JAVA_TS) -gt $(JAVA_BUILD_TS) ] && echo true || test -f $(JAVA_BUILD)/appenv/test.jni/SoLoader.bytes || echo true )
+REBUILD_JAVA := $(shell [ $(MOST_RECENT_JAVA_TS) -gt $(JAVA_BUILD_TS) ] && echo true || test -f $(JAVA_BUILD)/appenv/jni/SoLoader.bytes || echo true )
 $(info REBUILD_JAVA $(REBUILD_JAVA))
 
 java-compile : get-libraries
@@ -71,13 +71,13 @@ ifeq ($(REBUILD_JAVA),true)
 	@echo Compile java
 	@rm -rf $(JAVA_BUILD)
 	@mkdir -p $(JAVA_BUILD)
-	cp $(SRC_JAVA)/appenv/test.jni/SoLoader.fake $(SRC_JAVA)/appenv/test.jni/SoLoader.java
+	cp $(SRC_JAVA)/appenv/jni/SoLoader.fake $(SRC_JAVA)/appenv/jni/SoLoader.java || exit 1
 	@for R in $(SRC_ROOTS); do find $$R -name '*.java' >> $(JAVA_BUILD)/java_list ; done
 	$(JAVAC) -encoding utf8 -source $(JVM_VERSION) -target $(JVM_VERSION) \
 	-cp `find $(ROOT)/javalibs -name '*.jar' -printf '%p:' | sed -e 's/\/\//\//g' -e 's/:$$//g'` \
 	-d $(JAVA_BUILD) @$(JAVA_BUILD)/java_list
-	mv $(JAVA_BUILD)/appenv/test.jni/SoLoader.class $(JAVA_BUILD)/appenv/test.jni/SoLoader.bytes
-	rm -f $(SRC_JAVA)/appenv/test.jni/SoLoader.java
+	mv $(JAVA_BUILD)/appenv/jni/SoLoader.class $(JAVA_BUILD)/appenv/jni/SoLoader.bytes
+	rm -f $(SRC_JAVA)/appenv/jni/SoLoader.java
 	touch $(JAVA_BUILD)
 endif
 
@@ -86,15 +86,17 @@ copy-resources : java-compile native-build
 	@rm -rf $(JAVA_BUILD)/so
 	@mkdir -p $(JAVA_BUILD)/so
 	@cp -a $(ROOT)/prebuild/* $(JAVA_BUILD)/so
-	@cp $(SRC_JAVA)/appenv/test.jni/NATIVE_JAVA_UTILS_SO_VERSION $(JAVA_BUILD)/appenv/test.jni
+	@cp $(SRC_JAVA)/appenv/jni/NATIVE_JAVA_UTILS_SO_VERSION $(JAVA_BUILD)/appenv/jni
 	@mkdir -p $(ROOT)/classes
 	sh -c "cd $(JAVA_BUILD) && tar -cf - . " | sh -c "cd $(ROOT)/classes && tar -xf -"
  
-#
-native-build: java-compile 
+# rebuilding APIStub.class twice .... 
+native-build: java-compile gen-header
 	@$(MAKE) -C $(ROOT)/src_native ROOT=$(ROOT) JAVA_BUILD=$(JAVA_BUILD) SRC_NATIVE=$(SRC_NATIVE) NATIVE_JAVA_UTILS_SO_VERSION=$(NATIVE_JAVA_UTILS_SO_VERSION)
- 
- 
+
+gen-header: $(ROOT)/src/main/java/appenv/jni/APIStub.java java-compile
+	$(JAVAC) -cp $(JAVA_BUILD) -d $(JAVA_BUILD) -h $(SRC_NATIVE) $(SRC_JAVA)/appenv/jni/APIStub.java
+
 JAR_TS:=$(shell test -f $(ROOT)/target/appenv.jar && stat -c %Y $(ROOT)/target/appenv.jar || echo 0 )
 $(info JAR_TS $(JAR_TS))
 
