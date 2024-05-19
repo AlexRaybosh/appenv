@@ -71,6 +71,9 @@ ifeq ($(REBUILD_JAVA),true)
 	@echo Compile java
 	@rm -rf $(JAVA_BUILD)
 	@mkdir -p $(JAVA_BUILD)
+	@rm -f $(JAVA_BUILD)/java_list
+	@echo JAVAC VERSION
+	$(JAVAC) -version
 	cp $(SRC_JAVA)/appenv/jni/SoLoader.fake $(SRC_JAVA)/appenv/jni/SoLoader.java || exit 1
 	@for R in $(SRC_ROOTS); do find $$R -name '*.java' >> $(JAVA_BUILD)/java_list ; done
 	$(JAVAC) -encoding utf8 -source $(JVM_VERSION) -target $(JVM_VERSION) \
@@ -78,6 +81,7 @@ ifeq ($(REBUILD_JAVA),true)
 	-d $(JAVA_BUILD) @$(JAVA_BUILD)/java_list
 	mv $(JAVA_BUILD)/appenv/jni/SoLoader.class $(JAVA_BUILD)/appenv/jni/SoLoader.bytes
 	rm -f $(SRC_JAVA)/appenv/jni/SoLoader.java
+	@rm -f $(JAVA_BUILD)/java_list
 	touch $(JAVA_BUILD)
 endif
 
@@ -95,7 +99,7 @@ native-build: java-compile gen-header
 	@$(MAKE) -C $(ROOT)/src_native ROOT=$(ROOT) JAVA_BUILD=$(JAVA_BUILD) SRC_NATIVE=$(SRC_NATIVE) NATIVE_JAVA_UTILS_SO_VERSION=$(NATIVE_JAVA_UTILS_SO_VERSION)
 
 gen-header: $(ROOT)/src/main/java/appenv/jni/APIStub.java java-compile
-	$(JAVAC) -cp $(JAVA_BUILD) -d $(JAVA_BUILD) -h $(SRC_NATIVE) $(SRC_JAVA)/appenv/jni/APIStub.java
+	$(JAVAC) -encoding utf8 -source $(JVM_VERSION) -target $(JVM_VERSION)  -cp $(JAVA_BUILD) -d $(JAVA_BUILD) -h $(SRC_NATIVE) $(SRC_JAVA)/appenv/jni/APIStub.java
 
 JAR_TS:=$(shell test -f $(ROOT)/target/appenv.jar && stat -c %Y $(ROOT)/target/appenv.jar || echo 0 )
 $(info JAR_TS $(JAR_TS))

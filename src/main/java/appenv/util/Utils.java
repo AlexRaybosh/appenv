@@ -632,7 +632,7 @@ public final class Utils {
 			public UnameInfo call() throws Exception {
 				try {
 					byte[] bun = collectStdout("/bin/sh", "-c", "PATH=/bin:/usr/bin:$PATH uname");
-					byte[] bunp = collectStdout("/bin/sh", "-c", "PATH=/bin:/usr/bin:$PATH uname -p");
+					byte[] bunp = collectStdout("/bin/sh", "-c", "PATH=/bin:/usr/bin:$PATH uname -m");
 					String un = new String(bun, UTF8).replace("\n", "").replace("\r", "");
 					String unp = new String(bunp, UTF8).replace("\n", "").replace("\r", "");
 					UnameInfo u = new UnameInfo(un, unp);
@@ -797,20 +797,26 @@ public final class Utils {
 	}
 	public static Throwable proceedThrowable(Throwable t) {
 		Throwable current=t;
-		for (;;) {
+		for (int i=0;i<100;++i) {
 			Throwable c=current.getCause();
+			System.out.println(c);
 			if (c==null) return current; 
+			current=c;
 		}
+		return current;
 	}
 	public static Exception proceedException(Throwable t) {
 		Throwable current=t;
-		for (;;) {
+		for (int i=0;i<100;++i) {
 			Throwable c=current.getCause();
 			if (c==null) {
 				if (current instanceof Exception) return (Exception)current;
 				return new Exception(current);
 			}
+			current=c;
 		}
+		if (current instanceof Exception) return (Exception)current;
+		return new Exception(current);
 	}
 	public static Exception extraceCause(Throwable t) {
 		if (t instanceof InterruptedException) return (InterruptedException)t;

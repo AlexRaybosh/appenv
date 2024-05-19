@@ -6,3 +6,4 @@ native_build/*
 prebuild/*
 .gitignore.*
 classes/*
+/classes/

@@ -1,41 +1,56 @@
 
 
-ifeq "$(ARCH)" "Linux-x86_64-64"
-	CXX:=g++
-	LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
-	CXXFLAGS:=-m64
-	STRIP:=strip
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
-else ifeq "$(ARCH)" "Linux-x86_64-32"
-	CXX:=g++
-	LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
-	CXXFLAGS:=-m32
-	STRIP:=strip
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
-else ifeq "$(ARCH)" "SunOS-sparc-32"
-	CXX:=g++
-	LDFLAGS:=-shared -pthread -lrt
-	CXXFLAGS:=-m32
-	STRIP:=strip
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/solaris
-else ifeq "$(ARCH)" "SunOS-sparc-64"
-	CXX:=g++
-	LDFLAGS:=-shared -pthread -lrt
-	CXXFLAGS:=-m64
-	STRIP:=strip
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/solaris
-else ifeq "$(ARCH)" "AIX-powerpc-64"
-	CXX:=g++
-	LDFLAGS:=-shared -Wl,-G -Wl,-brtl -pthread -lrt -lc
-	CXXFLAGS:=-maix64
-	STRIP:=strip -X64
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/aix
-else ifeq "$(ARCH)" "AIX-powerpc-32"
-	CXX:=g++
-	LDFLAGS:=-shared -Wl,-G -Wl,-brtl -pthread -lrt -lc
-	CXXFLAGS:=-maix32
-	STRIP:=strip -X32
-	ARCH_INCLUDE:=$(CURDIR)/jni_include/aix
+$(info ARCH $(ARCH))
+$(info MYARCH $(MYARCH))
+
+ifeq "$(MYARCH)" "Linux-aarch64"
+	ifeq "$(ARCH)" "Linux-aarch64-64"
+		CXX:=g++
+		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
+		CXXFLAGS:=
+		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
+	else
+$(error Building on $(MYARCH), need to add support for $(ARCH)) 
+	endif	
+else ifeq "$(MYARCH)" "Linux-x86_64"
+	ifeq "$(ARCH)" "Linux-x86_64-64"
+		CXX:=g++
+		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
+		CXXFLAGS:=-m64
+		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
+	else ifeq "$(ARCH)" "Linux-x86_64-32"
+		CXX:=g++
+		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
+		CXXFLAGS:=-m32
+		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
+	else ifeq "$(ARCH)" "SunOS-sparc-32"
+		CXX:=g++
+		LDFLAGS:=-shared -pthread -lrt
+		CXXFLAGS:=-m32
+		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/solaris
+	else ifeq "$(ARCH)" "SunOS-sparc-64"
+		CXX:=g++
+		LDFLAGS:=-shared -pthread -lrt
+		CXXFLAGS:=-m64
+		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/solaris
+	else ifeq "$(ARCH)" "AIX-powerpc-64"
+		CXX:=g++
+		LDFLAGS:=-shared -Wl,-G -Wl,-brtl -pthread -lrt -lc
+		CXXFLAGS:=-maix64
+		STRIP:=strip -X64
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/aix
+	else ifeq "$(ARCH)" "AIX-powerpc-32"
+		CXX:=g++
+		LDFLAGS:=-shared -Wl,-G -Wl,-brtl -pthread -lrt -lc
+		CXXFLAGS:=-maix32
+		STRIP:=strip -X32
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/aix
+	endif
 endif
 
 COMMON_CXXFLAGS:=-fvisibility=hidden -fvisibility-inlines-hidden -D_REENTRANT \
@@ -49,8 +64,8 @@ JNI_BUILD:=$(NATIVE_BUILD)/$(ARCH)
 
 $(shell mkdir -p $(JNI_BUILD))
 
-#LIBNAME:=libarutilsjni-$(NATIVE_JAVA_UTILS_SO_VERSION)-$(ARCH).so
-LIBNAME:=libarutilsjni-$(NATIVE_JAVA_UTILS_SO_VERSION)-$(ARCH).so
+#LIBNAME:=libappenvjni-$(NATIVE_JAVA_UTILS_SO_VERSION)-$(ARCH).so
+LIBNAME:=libappenvjni-$(NATIVE_JAVA_UTILS_SO_VERSION)-$(ARCH).so
 $(info LIBNAME $(LIBNAME))
 
 all: $(JNI_BUILD)/$(LIBNAME)
