@@ -110,7 +110,7 @@ VERSION:=1.0.0
 zip:  copy-resources
 	rm -rf $(ROOT)/target
 	mkdir -p $(ROOT)/target
-	sh -c "cd $(SRC_JAVA) && zip -qr $(ROOT)/target/appenv-sources-$(VERSION)-jar . " ; \
+	sh -c "cd $(SRC_JAVA) && zip -qr $(ROOT)/target/appenv-sources-$(VERSION).jar . " ; \
 	sh -c "cd $(JAVA_BUILD) && zip -qr $(ROOT)/target/appenv-$(VERSION).jar . "
  
 clean-libs:
