@@ -3,7 +3,7 @@ java_build/*
 #javalibssrc/*
 native_build/*
 #target/*
-prebuild/*
+#prebuild/*
 .gitignore.*
 classes/*
 /classes/
