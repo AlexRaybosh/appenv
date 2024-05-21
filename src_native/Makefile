@@ -4,19 +4,20 @@
 #JAVAH:=javah
 UNAME=$(shell uname)
 MARCH=$(shell uname -m)
-MYARCH=$(UNAME)-$(MARCH)
+HOST_ARCH=$(UNAME)-$(MARCH)
 
 export NATIVE_BUILD:=$(ROOT)/native_build
 
 #all : $(JNI_H)
-$(info MYARCH $(MYARCH))
+$(info HOST_ARCH $(HOST_ARCH))
 
 all:
-ifeq ($(MYARCH),Linux-aarch64)
-	$(MAKE) -f arch.mk MYARCH=$(MYARCH) ARCH="Linux-aarch64-64" ROOT=$(ROOT)
-	#$(MAKE) -f arch.mk MYARCH=$(MYARCH) ARCH="Linux-armv7l-32" ROOT=$(ROOT)
-else ifeq ($(MYARCH), Linux-x86_64)
-	$(MAKE) -f arch.mk MYARCH=$(MYARCH) ARCH="Linux-x86_64-64" ROOT=$(ROOT)
+ifeq ($(HOST_ARCH),Linux-aarch64)
+	$(MAKE) -f arch.mk HOST_ARCH=$(HOST_ARCH) ARCH="Linux-aarch64-64" ROOT=$(ROOT)
+else ifeq ($(HOST_ARCH), Linux-x86_64)
+	$(MAKE) -f arch.mk HOST_ARCH=$(HOST_ARCH) ARCH="Linux-x86_64-64" ROOT=$(ROOT)
+	$(MAKE) -f arch.mk HOST_ARCH=$(HOST_ARCH) ARCH="Linux-aarch64-64" ROOT=$(ROOT)
+	$(MAKE) -f arch.mk HOST_ARCH=$(HOST_ARCH) ARCH="Linux-armv7l-32" ROOT=$(ROOT)
 endif
 
 #$(JNI_H): $(JAVA_BUILD)/appenv/jni/APIStub.class
@@ -30,7 +31,6 @@ endif
 clean:
 	@rm -rf $(ROOT)/native_build
 	$(MAKE) -f arch.mk ARCH="Linux-x86_64-64" ROOT=$(ROOT) clean
-	$(MAKE) -f arch.mk ARCH="Linux-x86_64-32" ROOT=$(ROOT) clean
 	$(MAKE) -f arch.mk ARCH="Linux-aarch64-64" ROOT=$(ROOT) clean
 	$(MAKE) -f arch.mk ARCH="Linux-armv7l-32" ROOT=$(ROOT) clean
 

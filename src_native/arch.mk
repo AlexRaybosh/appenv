@@ -1,9 +1,9 @@
 
 
 $(info ARCH $(ARCH))
-$(info MYARCH $(MYARCH))
+$(info HOST_ARCH $(HOST_ARCH))
 
-ifeq "$(MYARCH)" "Linux-aarch64"
+ifeq "$(HOST_ARCH)" "Linux-aarch64"
 	ifeq "$(ARCH)" "Linux-aarch64-64"
 		CXX:=g++
 		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
@@ -11,9 +11,9 @@ ifeq "$(MYARCH)" "Linux-aarch64"
 		STRIP:=strip
 		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
 	else
-$(error Building on $(MYARCH), need to add support for $(ARCH)) 
+$(error Building on $(HOST_ARCH), need to add support for $(ARCH)) 
 	endif	
-else ifeq "$(MYARCH)" "Linux-x86_64"
+else ifeq "$(HOST_ARCH)" "Linux-x86_64"
 	ifeq "$(ARCH)" "Linux-x86_64-64"
 		CXX:=g++
 		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
@@ -25,6 +25,22 @@ else ifeq "$(MYARCH)" "Linux-x86_64"
 		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
 		CXXFLAGS:=-m32
 		STRIP:=strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
+	else ifeq "$(ARCH)" "Linux-aarch64-64"
+		#CXX:=/opt/gcc-linaro-aarch64-linux-gnu/bin/aarch64-linux-gnu-g++
+		CXX:=aarch64-linux-gnu-g++
+		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
+		CXXFLAGS:=
+		#STRIP:=/opt/gcc-linaro-aarch64-linux-gnu/bin/aarch64-linux-gnu-strip
+		STRIP:=aarch64-linux-gnu-strip
+		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux		
+	else ifeq "$(ARCH)" "Linux-armv7l-32"
+		#CXX:=/opt/gcc-linaro-arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++
+		CXX:=arm-linux-gnueabihf-g++
+		LDFLAGS:=-shared -pthread -static-libgcc -static-libstdc++ -lrt
+		CXXFLAGS:=
+		#STRIP:=/opt/gcc-linaro-arm-linux-gnueabihf/bin/arm-linux-gnueabihf-strip
+		STRIP:=arm-linux-gnueabihf-strip
 		ARCH_INCLUDE:=$(CURDIR)/jni_include/linux
 	else ifeq "$(ARCH)" "SunOS-sparc-32"
 		CXX:=g++
@@ -53,7 +69,9 @@ else ifeq "$(MYARCH)" "Linux-x86_64"
 	endif
 endif
 
-COMMON_CXXFLAGS:=-fvisibility=hidden -fvisibility-inlines-hidden -D_REENTRANT \
+COMMON_CXXFLAGS:=\
+	-fvisibility=hidden -fvisibility-inlines-hidden \
+	-D_REENTRANT \
 	-D_POSIX_C_SOURCE=202001L -D_XOPEN_SOURCE=600 -fpic -pthread \
 	-I$(ARCH_INCLUDE) \
 	-std=gnu++11 \
@@ -72,7 +90,7 @@ all: $(JNI_BUILD)/$(LIBNAME)
 
 $(JNI_BUILD)/%.o : $(JNI_H)
 
-$(JNI_BUILD)/%.o : %.cc %.h
+$(JNI_BUILD)/%.o : %.cc
 	echo "Processing " $<
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -91,6 +109,8 @@ $(info CXXFLAGS $(CXXFLAGS))
 $(info JNI_H $(JNI_H))
 $(info JNI_OBJS $(JNI_OBJS))
 $(info LIBNAME $(JNI_BUILD)/$(LIBNAME))
+
+all: $(JNI_BUILD)/$(LIBNAME)
 
 $(JNI_BUILD)/$(LIBNAME): $(JNI_OBJS) arch.mk
 	mkdir -p $(ROOT)/prebuild

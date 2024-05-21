@@ -26,14 +26,12 @@ import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.Provider;
 import java.security.Security;
 import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -654,6 +652,9 @@ public final class Utils {
 		}
 	}
 
+	public static String getEffectiveUserId() {
+		return getProcessHolder().euid;
+	}
 	public static String getProcessorName() {
 		try {
 			return unameFuture.get().processor;
@@ -661,7 +662,6 @@ public final class Utils {
 			throw new RuntimeException(e);
 		}
 	}
-
 	
 	final private static sun.misc.Unsafe unsafe = loadUnsafe();
 
@@ -738,7 +738,7 @@ public final class Utils {
 		if (e instanceof InterruptedException) throw (InterruptedException)e;
 		Throwable current=e;
 		InterruptedException lastInterrupted=null;
-		for (;;) {
+		for (int i=0;i<100;++i) {
 			if (current instanceof InterruptedException)  lastInterrupted=(InterruptedException)current;
 			Throwable c=current.getCause();
 			if (c==null) 
@@ -755,7 +755,7 @@ public final class Utils {
 		Throwable current=e;
 		SQLException lastSQLException=null;
 		InterruptedException lastInterrupted=null;
-		for (;;) {
+		for (int i=0;i<100;++i) {
 			if (current instanceof SQLException)  lastSQLException=(SQLException)current;
 			if (current instanceof InterruptedException)  lastInterrupted=(InterruptedException)current;
 			Throwable c=current.getCause();
@@ -863,13 +863,15 @@ public final class Utils {
 		final Long startTime;
 		final String cmdLine;
 		final List<String> args;
+		final String euid;
 		
-		ProcessInfoHolder(String cannonicalHostName, Long pid, Long statTime, String cmdLine, List<String> args) {
+		ProcessInfoHolder(String cannonicalHostName, Long pid, Long statTime, String cmdLine, List<String> args, String euid) {
 			this.cannonicalHostName = cannonicalHostName;
 			this.pid = pid;
 			this.startTime = statTime;
 			this.cmdLine = cmdLine;
 			this.args=args;
+			this.euid=euid;
 		}
 		
 	}
@@ -878,6 +880,7 @@ public final class Utils {
 
 	private static ProcessInfoHolder initProcessHolder() {
 		Long pid=derivePid();
+		String euid=deriveEffectiveUserId();
 		Long startTime=null;
 		List<String> lst=new ArrayList<>();
 		String cmd=null;
@@ -910,7 +913,7 @@ public final class Utils {
 					
 		} catch (Exception e) {
 		}
-		return new ProcessInfoHolder(deriveCannonicalHostName(), pid, startTime, cmd, lst );
+		return new ProcessInfoHolder(deriveCannonicalHostName(), pid, startTime, cmd, lst, euid);
 	}
 
 	private static String deriveCannonicalHostName() {
@@ -944,7 +947,19 @@ public final class Utils {
 		}
 		return null;
 	}
-
+	private static String deriveEffectiveUserId() {
+		byte[] uid;
+		try {
+			uid = collectStdout("/bin/sh", "-c", "PATH=/bin:/usr/bin:$PATH id -u");
+			return new String(uid, UTF8).replace("\n", "").replace("\r", "");
+		} catch (InterruptedException e) {
+			throw new RuntimeException(e);
+		} catch (Exception e) {
+			System.err.println("Failed to derive effective user id: "+e.getMessage());
+			return "unknown";
+		}
+	}
+	
 
 	public static <R> R rethrowRuntimeException(String msg, Throwable t) {
 		if (t instanceof InterruptedException) Thread.currentThread().interrupt();

@@ -325,7 +325,7 @@ public class APILoader {
     	
     	
     	
-    	String unmapped="appenvjni-"+md5;////nativeSoVersion+"-"+Utils.getArchName()+"-"+uid;
+    	String unmapped="appenvjni-"+md5+"-"+Utils.getEffectiveUserId();////nativeSoVersion+"-"+Utils.getArchName()+"-"+uid;
     	String mapped=System.mapLibraryName(unmapped);
     	if (mapped.endsWith(".a")) mapped=mapped.replaceAll("\\.a$", ".so");
     	
