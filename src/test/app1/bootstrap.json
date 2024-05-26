@@ -1,5 +1,5 @@
 {
-	"include" : ["test.db","allincludes"],
+	"include" : ["db","allincludes"],
 	
 	"env" : {
 		"localdev2" : {

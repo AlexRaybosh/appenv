@@ -183,16 +183,16 @@ public class BootstrapEnv {
 			}
 		}
 		
-		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(envConf, "test.db", "core")!=null ) {
+		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(envConf, "db", "core")!=null ) {
 			db=DB.create(dburl, dbuser, dbpassword);
 		}
-		env=initEnv(db,envName,envConf);//Env.init(test.db, envName , envConf); 
-		if (db!=null && JsonUtils.getJsonObject(env.getMeta(), "test.db", "core")==null) {
+		env=initEnv(db,envName,envConf);//Env.init(db, envName , envConf); 
+		if (db!=null && JsonUtils.getJsonObject(env.getConfiguration(), "db", "core")==null) {
 			db.close();
 			db=null;
 		}
 		if (db!=null) {
-			db=reinit(db,env.getMeta(), "core", dburl,  dbuser, dbpassword);
+			db=reinit(db,env.getConfiguration(), "core", dburl,  dbuser, dbpassword);
 		}
 
 		appSecFuture=AppScope.getExecutorService().submit(new Callable<AppSec>() {
@@ -224,7 +224,7 @@ public class BootstrapEnv {
 
 
 	public static DB reinit(DB db, JsonObject envConf, String name, String dburl, String dbuser, String dbpassword) {
-		Integer socketTimeout=JsonUtils.getInteger(null,envConf, "test.db", name, "urlParams", "socketTimeout");
+		Integer socketTimeout=JsonUtils.getInteger(null,envConf, "db", name, "urlParams", "socketTimeout");
 		if (socketTimeout!=null) {
 			String newurl=dburl;
 			Matcher m=Pattern.compile("(.*\\W)socketTimeout=(\\d+)(.*)").matcher(dburl);

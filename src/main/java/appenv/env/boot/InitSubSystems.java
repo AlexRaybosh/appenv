@@ -42,7 +42,7 @@ public class InitSubSystems {
 		this.appScope=appScope;
 		this.appSubSystems=subsystems;
 		this.initial=initial;
-		entries = JsonUtils.getJsonObject(appScope.getMeta(), "subsystems", "entries");
+		entries = JsonUtils.getJsonObject(appScope.getConfiguration(), "subsystems", "entries");
 		if (entries==null || entries.entrySet().size()==0) {
 			initService=null;
 			return;
@@ -59,7 +59,7 @@ public class InitSubSystems {
 			addToOrder(name, name, pathTraversed);
 		}
 		
-		final int initConcurrency = JsonUtils.getInteger(1, appScope.getMeta(), "subsystems", "initConcurrency");
+		final int initConcurrency = JsonUtils.getInteger(1, appScope.getConfiguration(), "subsystems", "initConcurrency");
 		
 		final Map<String,Integer> actualInitOrder=new HashMap<>();
 		int cnt=0;

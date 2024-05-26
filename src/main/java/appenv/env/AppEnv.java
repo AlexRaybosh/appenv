@@ -2,6 +2,7 @@ package appenv.env;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Future;
 
@@ -56,9 +57,13 @@ public class AppEnv {
 	
 	public static Env env() {return getAppScope().getEnv();}
 	public static Integer envId() {return env().getId();}
+	public static String envName() {return getAppScope().getEnv().getName();}
+	
+	public static Properties bootstrapProperties() {return getAppScope().getBootstrapProperties();}
+	
 	public static Integer clusterMemberId() {return getAppScope().getClusterMemberId();}
 	public static Long newId(String name) throws SQLException, InterruptedException {return getAppScope().newId(name);}
-	public static JsonObject getMeta() {return getAppScope().getMeta();}
+	public static JsonObject getConfiguration() {return getAppScope().getConfiguration();}
 	
 	
 	
@@ -77,7 +82,7 @@ public class AppEnv {
 	public static boolean wordCached(String base, Number id) {return getAppScope().getWordCached(base, id);}
 	
 	public static long getTime() {return getAppScope().getTime();}
-	public static String envName() {return getAppScope().getEnv().getName();}
+	
 
 	public static byte[] encryptAES(byte[] value, int off, int len) {return getAppScope().encryptAES(value, off, len);}
 	public static byte[] decryptAES(byte[] value, int off, int len) {return getAppScope().decryptAES(value, off, len);}
