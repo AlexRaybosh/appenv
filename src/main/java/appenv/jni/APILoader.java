@@ -286,7 +286,7 @@ public class APILoader {
 		        } else {
 		            // Load preinstalled dipjava (in the path -Djava.library.path) 
 		            Method loadMethod = loaderClass.getDeclaredMethod("loadLibrary", new Class[] { String.class });
-		            loadMethod.invoke(null, "arutilsjni-"+nativeSoVersion+"-"+Utils.getArchName());
+		            loadMethod.invoke(null, "appenvjni-"+nativeSoVersion+"-"+Utils.getArchName());
 		        }
 		        return;
 	        } catch (Exception e) {
@@ -316,7 +316,7 @@ public class APILoader {
     */
     static File findNativeLibrary() throws InterruptedException, IOException, NoSuchAlgorithmException {
     	//String uid=Utils.echo("`id -u`").replaceAll("(\n|\r)+", "");
-    	String resNameUnmapped="arutilsjni-"+nativeSoVersion+"-"+Utils.getArchName();
+    	String resNameUnmapped="appenvjni-"+nativeSoVersion+"-"+Utils.getArchName();
     	String resNameMapped=System.mapLibraryName(resNameUnmapped);
     	if (resNameMapped.endsWith(".a")) resNameMapped=resNameMapped.replaceAll("\\.a$", ".so");
     	String fullResPath="/so/"+resNameMapped;
@@ -325,7 +325,7 @@ public class APILoader {
     	
     	
     	
-    	String unmapped="arutilsjni-"+md5;////nativeSoVersion+"-"+Utils.getArchName()+"-"+uid;
+    	String unmapped="appenvjni-"+md5+"-"+Utils.getEffectiveUserId();////nativeSoVersion+"-"+Utils.getArchName()+"-"+uid;
     	String mapped=System.mapLibraryName(unmapped);
     	if (mapped.endsWith(".a")) mapped=mapped.replaceAll("\\.a$", ".so");
     	
