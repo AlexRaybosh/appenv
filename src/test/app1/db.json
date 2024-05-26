@@ -26,13 +26,19 @@
 	},
 
 	"defaults" : {
-		"test.db" : {
+		"db" : {
 			"logdb" : {
 				"properties" : {
 					"dburl"	:	"jdbc:mysql://localhost:3306/test2?allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true&useSSL=false",
 					"dbuser":	"test2",
 					"dbpasswordBootstrapPropertyName" : "logdbpassword"
+				},
+				"pool" : {
+					"bounded" : {
+						"maxConnections" : 3
+					}
 				}
+				
 			},
 			"core" : {
 				"urlParams" : {

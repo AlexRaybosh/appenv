@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -201,6 +202,8 @@ public class AppScope {
 		
 	}
 
+	public final Properties getBootstrapProperties() {return getInit().getBootstrapProperties();}
+	
 	
 	public final boolean hasDB() {return getInit().hasDB();}
 	public final DB getFlexDB() {return getInit().getFlexDB();}
@@ -325,7 +328,7 @@ public class AppScope {
 	public final boolean getWordCached(String base, String word) {return getInit().wordCached(base, word);}
 	public final boolean getWordCached(String base, Number id) {return getInit().wordCached(base, id);}
 
-	public final JsonObject getMeta() {return getEnv().getMeta();}
+	public final JsonObject getConfiguration() {return getEnv().getConfiguration();}
 
 	public BasicLogger getLogger() {return logger;}
 	

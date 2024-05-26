@@ -3,6 +3,7 @@ package appenv.env.boot;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -31,6 +32,7 @@ public 	class Init {
 	final Env env;
 	final boolean hasDB;
 	final AppScope appScope;
+	final Properties bootstrapProperties;
 	
 	public final AppSec getAppSec() {
 		try {
@@ -67,7 +69,7 @@ public 	class Init {
 			dbid=null;
 			coreDB=null;
 		}
-		JsonObject allDBsConf = JsonUtils.getJsonObject(env.getMeta(), "test.db");
+		JsonObject allDBsConf = JsonUtils.getJsonObject(env.getConfiguration(), "db");
 
 		if (null!=allDBsConf && !bs.isDBDisabled())for (Entry<String, JsonElement> e : allDBsConf.entrySet()) {
 			String dbName=e.getKey();
@@ -87,7 +89,7 @@ public 	class Init {
 				dbpassword=bs.getProperties().getProperty(dbpasswordBootstrapPropertyName);
 			}
 			DB flexDB=DB.create(dburl, dbuser, dbpassword);
-			flexDB=BootstrapEnv.reinit(flexDB, env.getMeta(), dbName, dburl, dbuser, dbpassword);
+			flexDB=BootstrapEnv.reinit(flexDB, env.getConfiguration(), dbName, dburl, dbuser, dbpassword);
 			DB boundedDB=flexDB.clone();
 			initDB(dbName,true, boundedDB);
 			initDB(dbName,false, flexDB);
@@ -97,6 +99,7 @@ public 	class Init {
 		if (coreDB!=null) {
 			sideDBs.put("core", coreDB);
 		}
+		this.bootstrapProperties=bs.getProperties();
 	}
 	public final boolean hasDB() {			
 		return hasDB;
@@ -104,12 +107,12 @@ public 	class Init {
 
 	private void initDB(String name, boolean bounded, DB db) {
 		String poolName=bounded?"bounded":"flex";
-		db.setMaxCachedPreparedStatements(JsonUtils.getInteger(50, env.getMeta(),"test.db", name, "pool", poolName, "maxCachedPreparedStatements"));
-		db.setMaxConnections(JsonUtils.getInteger(5, env.getMeta(), "test.db", name, "pool", poolName, "maxConnections"));
-		db.setRetryTimeout(TimeUnit.MILLISECONDS, JsonUtils.getLong(20000L,env.getMeta(),"test.db", name, "pool", poolName, "retryTimeoutMilliseconds"));
+		db.setMaxCachedPreparedStatements(JsonUtils.getInteger(50, env.getConfiguration(),"db", name, "pool", poolName, "maxCachedPreparedStatements"));
+		db.setMaxConnections(JsonUtils.getInteger(5, env.getConfiguration(), "db", name, "pool", poolName, "maxConnections"));
+		db.setRetryTimeout(TimeUnit.MILLISECONDS, JsonUtils.getLong(20000L,env.getConfiguration(),"db", name, "pool", poolName, "retryTimeoutMilliseconds"));
 		
-		//"test.db":{"pool":{"flex":{"initStatements"
-		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getMeta(), "test.db", name, "pool", poolName, "initStatements")) {
+		//"db":{"pool":{"flex":{"initStatements"
+		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getConfiguration(), "db", name, "pool", poolName, "initStatements")) {
 			String onOpen=JsonUtils.getString(e, "onOpen");
 			String onClose=JsonUtils.getString(e, "onClose");
 			boolean autoCommit=JsonUtils.getBool(e, "autoCommit");
@@ -119,6 +122,8 @@ public 	class Init {
 	}
 
 
+	public final Properties getBootstrapProperties() {return bootstrapProperties;}
+	
 
 	public final DB getFlexDB() {
 		if (!hasDB()) throw new RuntimeException("core DB is not available");

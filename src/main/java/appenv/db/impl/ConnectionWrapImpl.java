@@ -740,7 +740,7 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 			con = java.sql.DriverManager.getConnection(db.getUrl(), db.getProperties());
 			setUpDrizzle();
 			con.setAutoCommit(true);
-			//con.setTransactionIsolation(test.db.getTransactionIsolation());
+			//con.setTransactionIsolation(db.getTransactionIsolation());
 			Statement st = con.createStatement();
 			try {
 				switch (db.getDialect()) {

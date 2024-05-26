@@ -18,7 +18,7 @@ public class Env {
 		return name;
 	}
 
-	public final JsonObject getMeta() {
+	public final JsonObject getConfiguration() {
 		return meta;
 	}
 

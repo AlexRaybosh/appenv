@@ -56,37 +56,37 @@ public class DictionaryBase {
 		base=_base;
 		tableName=base+"_dictionary";	
 		idFieldName=tableName+"_id";
-		cacheSize=JsonUtils.getInteger(64535, appScope.getMeta(),"etc","dictionary",base,"cacheSize");
+		cacheSize=JsonUtils.getInteger(64535, appScope.getConfiguration(),"etc","dictionary",base,"cacheSize");
 		idCache=new IdCache();
 		nameCache=new NameCache();
-		MAX_WORD_LENGTH=JsonUtils.getInteger(700, appScope.getMeta(),"etc","dictionary",base,"maxWordLength");
+		MAX_WORD_LENGTH=JsonUtils.getInteger(700, appScope.getConfiguration(),"etc","dictionary",base,"maxWordLength");
 		lookupCreateByName=asyncEngine.register("lookupCreateByName", new ServiceBackend<DictionaryWord>() {	
 			public void process(List<Request<DictionaryWord>> bulk) throws Exception {lookupCreateByNameBulk(bulk);}
 			public int getMaxWorkers() {
-				return JsonUtils.getInteger(3, appScope.getMeta(),"etc","dictionary",base,"concurrency");
+				return JsonUtils.getInteger(3, appScope.getConfiguration(),"etc","dictionary",base,"concurrency");
 			}
 			public int getMaxQueuedRequests() {
-				return JsonUtils.getInteger(10000, appScope.getMeta(),"etc","dictionary",base,"queueSize");
+				return JsonUtils.getInteger(10000, appScope.getConfiguration(),"etc","dictionary",base,"queueSize");
 			}
-			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getMeta(),"etc","dictionary",base,"bulkSize");}
+			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getConfiguration(),"etc","dictionary",base,"bulkSize");}
 		});
 		lookupById=asyncEngine.register("lookupById", new ServiceBackend<DictionaryWord>() {	
 			public void process(List<Request<DictionaryWord>> bulk) throws Exception {lookupByIdBulk(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(3, appScope.getMeta(),"etc","dictionary",base,"concurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getMeta(),"etc","dictionary",base,"queueSize");}
-			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getMeta(),"etc","dictionary",base,"bulkSize");}
+			public int getMaxWorkers() {return JsonUtils.getInteger(3, appScope.getConfiguration(),"etc","dictionary",base,"concurrency");}
+			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getConfiguration(),"etc","dictionary",base,"queueSize");}
+			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getConfiguration(),"etc","dictionary",base,"bulkSize");}
 		});
 		checkByName=asyncEngine.register("checkByName", new ServiceBackend<Boolean>() {	
 			public void process(List<Request<Boolean>> bulk) throws Exception {checkByNameBulk(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(3, appScope.getMeta(),"etc","dictionary",base,"concurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getMeta(),"etc","dictionary",base,"queueSize");}
-			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getMeta(),"etc","dictionary",base,"bulkSize");}
+			public int getMaxWorkers() {return JsonUtils.getInteger(3, appScope.getConfiguration(),"etc","dictionary",base,"concurrency");}
+			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getConfiguration(),"etc","dictionary",base,"queueSize");}
+			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getConfiguration(),"etc","dictionary",base,"bulkSize");}
 		});
 		checkById=asyncEngine.register("checkById", new ServiceBackend<Boolean>() {	
 			public void process(List<Request<Boolean>> bulk) throws Exception {checkByIdBulk(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(2, appScope.getMeta(),"etc","dictionary",base,"concurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getMeta(),"etc","dictionary",base,"queueSize");}
-			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getMeta(),"etc","dictionary",base,"bulkSize");}
+			public int getMaxWorkers() {return JsonUtils.getInteger(2, appScope.getConfiguration(),"etc","dictionary",base,"concurrency");}
+			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getConfiguration(),"etc","dictionary",base,"queueSize");}
+			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getConfiguration(),"etc","dictionary",base,"bulkSize");}
 		});
 		mysqlDialect=appScope.getFlexDB().getDialect()==Dialect.MYSQL || appScope.getFlexDB().getDialect()==Dialect.DRIZZLE_MYSQL || appScope.getFlexDB().getDialect()==Dialect.DRIZZLE;  
 		String straightJoin=mysqlDialect?"straight_join":"join";
