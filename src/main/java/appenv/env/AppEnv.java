@@ -63,7 +63,8 @@ public class AppEnv {
 	
 	public static Integer clusterMemberId() {return getAppScope().getClusterMemberId();}
 	public static Long newId(String name) throws SQLException, InterruptedException {return getAppScope().newId(name);}
-	public static JsonObject getConfiguration() {return getAppScope().getConfiguration();}
+	public static JsonObject configuration() {return getAppScope().getConfiguration();}
+	public static JsonObject getConfiguration() {return configuration();}
 	
 	
 	
