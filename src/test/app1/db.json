@@ -2,7 +2,7 @@
 	
 	"env" : {
 		"localdev2" : {
-			"test.db" : {
+			"db" : {
 				"core" : {
 					"urlParams" : {
 						"#socketTimeout" : 5

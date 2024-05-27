@@ -1,4 +1,4 @@
-package test.db;
+package db;
 
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -23,15 +23,15 @@ public class T8 {
 
 	public static void main(String[] args) throws Exception {
 		final DB db=DB.create("jdbc:mysql://localhost:3306/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true", "business", "business");
-		//final DB test.db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true", "business", "business");		
+		//final DB db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true", "business", "business");		
 		AsyncEngine engine=AsyncEngine.create();
 		engine.register("shoveIt", createShoveItBackend(db));
 		
 		try {
-			//DB test.db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true", "business", "business");
-	//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
-	//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "model", "oracle");
-			//test.db.setBatchSize(2);
+			//DB db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true", "business", "business");
+	//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
+	//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "model", "oracle");
+			//db.setBatchSize(2);
 			
 			db.update("drop table if exists  workdb.t0 ");
 			db.update("create table workdb.t0 (id int unsigned not null,v int unsigned not null,primary key(id))");
@@ -52,9 +52,9 @@ public class T8 {
 					") engine=MEMORY",
 					"drop temporary table if exists tempdb.X");
 			
-			/*test.db.commit(new StatementBlock<Void>() {
+			/*db.commit(new StatementBlock<Void>() {
 				public Void execute(ConnectionWrap cw) throws SQLException,	InterruptedException {
-					test.db.removeInitStatementKey(false, sk);
+					db.removeInitStatementKey(false, sk);
 					return null;
 				}
 			})*/;

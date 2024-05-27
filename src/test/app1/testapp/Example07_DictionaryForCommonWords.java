@@ -35,7 +35,7 @@ public class Example07_DictionaryForCommonWords {
 		System.out.println("Done creating "+MAX+" commonly used strings in "+(addedFirstTime-start)+" ms.");
 		
 		// lets ensure commit
-		// once getId/getWord returns, its guaranteed to be committed to the test.db
+		// once getId/getWord returns, its guaranteed to be committed to the db
 		for (DictionaryWord w : words)
 			w.getId(); 
 		

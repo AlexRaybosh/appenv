@@ -1,4 +1,4 @@
-package test.db;
+package db;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -19,7 +19,7 @@ public class T1 {
 
 	public static void main(String[] args) throws Exception {
 		DB db=DB.create("jdbc:mysql://localhost:3306/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true", "business", "business");
-//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
+//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
 
 		DBID dbid=new DBID(db, "workdb.seq");
 		
@@ -33,7 +33,7 @@ public class T1 {
 				System.out.println(Utils.csvList(row));
 			}
 			
-			// Demonstrates transaction scope, with 2 test.db calls:
+			// Demonstrates transaction scope, with 2 db calls:
 			// 1. select for update
 			// 2. delete
 			// implicit commit on success, or rollback/close/retry

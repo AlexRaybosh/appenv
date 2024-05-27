@@ -1,4 +1,4 @@
-package test.db;
+package db;
 
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -22,7 +22,7 @@ public class T4_1 {
 
 	public static void main(String[] args) throws Exception {
 		DB db=DB.create("jdbc:mysql://localhost:3306/test2?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true&rewriteBatchedStatements=true", "test2", "");
-		//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
+		//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
 		db.setMaxConnections(20);
 		AsyncEngine engine=AsyncEngine.create();
 		engine.register("shoveIt", createShoveItBackend(db));

@@ -1,4 +1,4 @@
-package test.db;
+package db;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -53,10 +53,10 @@ public class T4_ORA {
 		engine.register("shoveIt", createShoveItBackend(db));
 		DBID dbid=new DBID(db,"workdb.seq");
 		try {
-			//DB test.db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true", "business", "business");
+			//DB db=DB.create("jdbc:mysql://192.168.1.2:6666/?autoReconnect=true&allowMultiQueries=true&cacheResultSetMetadata=true&emptyStringsConvertToZero=false&useInformationSchema=true&useServerPrepStmts=true", "business", "business");
 	//		
-	//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
-	//		DB test.db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "model", "oracle");
+	//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "business", "business");
+	//		DB db=DB.create("jdbc:oracle:thin:@(DESCRIPTION=(sdu=32000)(ADDRESS=(PROTOCOL=TCP)(HOST=192.168.1.2)(PORT=1521))(CONNECT_DATA=(SID=orcl)(SERVER=DEDICATED)))", "model", "oracle");
 			db.setBatchSize(4096);
 			
 			db.autocommit(new StatementBlock<Void>() {
@@ -80,13 +80,13 @@ public class T4_ORA {
 				}
 			});
 			
-			//test.db.update("insert into workdb.t1 values (?,?)",false, 0,0);
+			//db.update("insert into workdb.t1 values (?,?)",false, 0,0);
 			db.setBatchSize(4096);
-			//test.db.setBatchSize(8);
+			//db.setBatchSize(8);
 			db.setMaxConnections(30);
-			//test.db.setBatchSize(1024);
-			//test.db.setBatchSize(2048);
-			//test.db.setMaxConnections(30);
+			//db.setBatchSize(1024);
+			//db.setBatchSize(2048);
+			//db.setMaxConnections(30);
 			
 
 			CompletionCallback callback=new CompletionCallback() {
