@@ -19,6 +19,7 @@ import appenv.util.Legacy;
 import appenv.util.Utils;
 
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.regex.Matcher;
@@ -116,6 +117,10 @@ public class BootstrapEnv {
 		}
 		Map<String,JsonObject> allConfigs=new LinkedHashMap<>();
 		add("bootstrap", allConfigs, buildInConfig);
+/*		for (Entry<String, JsonObject> e : allConfigs.entrySet()) {
+			System.out.println(e.getKey()+JsonUtils.prettyPrint(e.getValue())+"\n\n");
+		}
+*/		
 		JsonObject[] arr=allConfigs.values().<JsonObject>toArray(new JsonObject[allConfigs.size()]);
 		buildInConfig=JsonUtils.combine(arr);
 
@@ -183,11 +188,11 @@ public class BootstrapEnv {
 			}
 		}
 		
-		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(envConf, "db", "core")!=null ) {
+		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(envConf, "database", "core")!=null ) {
 			db=DB.create(dburl, dbuser, dbpassword);
 		}
 		env=initEnv(db,envName,envConf);//Env.init(db, envName , envConf); 
-		if (db!=null && JsonUtils.getJsonObject(env.getConfiguration(), "db", "core")==null) {
+		if (db!=null && JsonUtils.getJsonObject(env.getConfiguration(), "database", "core")==null) {
 			db.close();
 			db=null;
 		}
@@ -224,7 +229,7 @@ public class BootstrapEnv {
 
 
 	public static DB reinit(DB db, JsonObject envConf, String name, String dburl, String dbuser, String dbpassword) {
-		Integer socketTimeout=JsonUtils.getInteger(null,envConf, "db", name, "urlParams", "socketTimeout");
+		Integer socketTimeout=JsonUtils.getInteger(null,envConf, "database", name, "urlParams", "socketTimeout");
 		if (socketTimeout!=null) {
 			String newurl=dburl;
 			Matcher m=Pattern.compile("(.*\\W)socketTimeout=(\\d+)(.*)").matcher(dburl);

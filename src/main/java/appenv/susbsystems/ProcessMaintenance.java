@@ -61,7 +61,7 @@ public class ProcessMaintenance extends SubSystem {
 	
 	private Long insertProcessId(final String hostName, final Long pid, final String cmdLine, final Long start)
 			throws SQLException, InterruptedException {
-		return getAppScope().getFlexDB().commit(new StatementBlock<Long>() {
+		return getAppScope().getDB().commit(new StatementBlock<Long>() {
 			public Long execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				Long processId=appScope.newId("system_process_id");
 				long now=getAppScope().getTime();
@@ -94,7 +94,7 @@ public class ProcessMaintenance extends SubSystem {
 		if (TOUCH.equals(tickName)) {
 			long deadMs = getDead(now);
 			try {
-				getAppScope().getFlexDB().update("update system_process set is_active=1, ping_ms=?, dead_ms=? where id=?", true, now, deadMs, processId);
+				getAppScope().getDB().update("update system_process set is_active=1, ping_ms=?, dead_ms=? where id=?", true, now, deadMs, processId);
 			} catch (Exception e) {
 				appScope.logerr("failed to touch system_process: "+processId,e);
 			}
@@ -102,10 +102,13 @@ public class ProcessMaintenance extends SubSystem {
 		} else if (MAINTAIN.equals(tickName)) {
 			try {
 				long removeDeadMs=getRemoveDead(now);
-				for (Object did : appScope.getFlexDB().selectFirstColumn("select id from system_process force index (process_dead_idx) where is_active=1 and dead_ms<?", true, now)) {
-					appScope.getFlexDB().update("update system_process set is_active=0 where id=?", true, Utils.toLong(did));
+				for (Object did : appScope.getDB().selectFirstColumn("select id from system_process "+/*  index (process_dead_idx)*/ " where is_active=1 and dead_ms<?", true, now)) {
+					appScope.getDB().update("update system_process set is_active=0 where id=?", true, Utils.toLong(did));
 				}
-				appScope.getFlexDB().update("delete from system_process where is_active=0 and dead_ms<?", true, removeDeadMs);
+				//appScope.getDB().update("delete from system_process where is_active=0 and dead_ms<?", true, removeDeadMs);
+				for (Object did : appScope.getDB().selectFirstColumn("select id from system_process "+/* force index (process_dead_idx)*/ " where is_active=0 and dead_ms<?", true, removeDeadMs)) {
+					appScope.getDB().update("delete from system_process where id=?", true, Utils.toLong(did));
+				}
 			} catch (Exception e) {
 				appScope.logerr("failed to maint system_process: "+processId,e);
 			}
@@ -117,7 +120,7 @@ public class ProcessMaintenance extends SubSystem {
 				final Integer newClusterMemberId=deriveMemberId(appScope, plsof);
 				if (!Objects.equals(newClusterMemberId, clusterMemberId)) {
 					clusterMemberId=newClusterMemberId;
-					appScope.getFlexDB().update("update system_process set cluster_member_id=? where id=?",false, newClusterMemberId, clusterMemberId);
+					appScope.getDB().update("update system_process set cluster_member_id=? where id=?",false, newClusterMemberId, clusterMemberId);
 				}	
 			} catch (Exception e) {
 				if (e!=null) appScope.logerr("failed to lsof system_process: "+processId,e);
@@ -143,7 +146,7 @@ public class ProcessMaintenance extends SubSystem {
 				if (ports.length()>0) ports.append(",").append(p);
 				else ports.append(p);
 			}
-			memberId=Utils.toInteger(appScope.getFlexDB().selectSingle("select id from cluster_member where hostname=? and tcp_port in ("+ports+")", false, myhost));
+			memberId=Utils.toInteger(appScope.getDB().selectSingle("select id from cluster_member where hostname=? and tcp_port in ("+ports+")", false, myhost));
 		}
 		return memberId;
 	}
@@ -161,7 +164,7 @@ public class ProcessMaintenance extends SubSystem {
 	public void destroy() {
 		try {
 			if(appScope.hasDB()) 
-				appScope.getFlexDB().update("update system_process set is_active=0 where id=?", true, processId);
+				appScope.getDB().update("update system_process set is_active=0 where id=?", true, processId);
 		} catch (Exception e) {
 			appScope.logerr("Failed to deactivate system_process: "+processId+" on destroy", e);
 		}

@@ -13,5 +13,7 @@
 	<classpathentry kind="lib" path="javalibs/gson-2.8.7.jar" sourcepath="javalibssrc/gson-2.8.7-sources.jar"/>
 	<classpathentry kind="lib" path="javalibs/mysql-connector-java-5.1.49.jar" sourcepath="javalibssrc/mysql-connector-java-5.1.49-sources.jar"/>
 	<classpathentry kind="lib" path="javalibssrc/postgresql-42.2.23-sources.jar"/>
+	<classpathentry kind="lib" path="javalibs/guava-33.4.8-jre.jar" sourcepath="javalibssrc/guava-33.4.8-jre-sources.jar"/>
+	<classpathentry kind="lib" path="javalibs/failureaccess-1.0.3.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>

@@ -21,5 +21,10 @@ public class Env {
 	public final JsonObject getConfiguration() {
 		return meta;
 	}
+	@Override
+	public String toString() {
+		return "Env [id=" + id + ", name=" + name + ", meta=" + meta + "]";
+	}
+	
 
 }

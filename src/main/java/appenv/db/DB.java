@@ -1,18 +1,5 @@
 /*
- * Copyright (c) 2009-2015, Alex Raybosh
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 3
- * as published by the Free Software Foundation.
- * http://www.gnu.org/licenses/lgpl-3.0.html  
- * 
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- * 
+ * 2009-2015, Alex Raybosh
  */
 
 package appenv.db;
@@ -120,6 +107,7 @@ public abstract class DB {
 		public String getUTCTimestampFunction();
 		public String getUTCTimestampFunctionSelect();
 		public String getLongSequenceTypeName();
+		public boolean canCleanTempTablesOnCommit();
 	}
 	public abstract Intrinsics getIntrinsics();
 
@@ -144,6 +132,7 @@ public abstract class DB {
 	public abstract boolean removeInitStatementKey(boolean autoCommit,Object key);
 	public Object addInitSqlWithArgs(boolean autoCommit, final String sql, final Object... args) {
 		return addInitStatement(autoCommit,sql==null?null:new StatementBlock<Void>() {
+			public String getDebugString() {return sql;}
 			public Void execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				cw.update(sql, false, args);
 				return null;
@@ -151,7 +140,8 @@ public abstract class DB {
 		}, null);
 	};
 	public Object addInitSqlWithCleanup(boolean autoCommit, final String sql, final String cleanupSql) {
-		return addInitStatement(false,sql==null?null:new StatementBlock<Void>() {
+		return addInitStatement(autoCommit,sql==null?null:new StatementBlock<Void>() {
+			public String getDebugString() {return sql;}
 			public Void execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				cw.update(sql, false);
 				return null;
@@ -191,6 +181,8 @@ public abstract class DB {
 	public abstract String findDefaultDatabase() throws SQLException, InterruptedException ;
 	
 	public abstract void allowOverborrow(boolean allowOverborrow);
+
+	public abstract void setOverborrowPenaltyTimeout(TimeUnit milliseconds, long overborrowPenaltyTimeoutMilliseconds);
 	
 	
 }

@@ -12,7 +12,7 @@ public class BasicLogger {
 		sb.append(": ");
 		if (msg!=null) sb.append(msg+"\n");
 		if (frames!=null && frames.size()>0) {
-			sb.append("Logging Location:\n");
+			sb.append("Location:");
 			appendFrames(sb,frames);
 			//+frames+" ");
 		}

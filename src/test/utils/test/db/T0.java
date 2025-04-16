@@ -1,4 +1,4 @@
-package db;
+package test.db;
 
 import java.sql.SQLException;
 import java.util.ArrayList;

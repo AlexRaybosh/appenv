@@ -206,13 +206,10 @@ public class AppScope {
 	
 	
 	public final boolean hasDB() {return getInit().hasDB();}
-	public final DB getFlexDB() {return getInit().getFlexDB();}
+	public final boolean hasDB(String dbName) {return getInit().hasDB(dbName);}
+	public final DB getDB() {return getInit().getDB();}
+	public final DB getDB(String dbName) {return getInit().getDB(dbName);}
 	
-	
-	
-	public final DB getFlexDB(String dbName) {return getInit().getFlexDB(dbName);}
-	public final DB getBoundedDB(String dbName) {return getInit().getBoundedDB(dbName);}
-	public final DB getBoundedDB() {return getInit().getBoundedDB();}
 	
 	public final Long getSystemProcessId() {
 		if (hasSubSystem(PROCESS_MAINTENANCE)) {
@@ -266,7 +263,7 @@ public class AppScope {
 
 	public final Long newId(String name) throws SQLException, InterruptedException {
 		try {
-			return initFuture.get().getDbid().next(name);
+			return initFuture.get().getDBID().next(name);
 		} catch (Exception e) {
 			e=Utils.proceedUnlessSQLOrInterrupted(e);
 			return Utils.rethrowRuntimeException(e);

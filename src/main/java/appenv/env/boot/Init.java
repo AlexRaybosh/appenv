@@ -1,5 +1,6 @@
 package appenv.env.boot;
 
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -21,14 +22,14 @@ import appenv.util.DummyFuture;
 import appenv.util.JsonUtils;
 import appenv.util.Utils;
 
-public 	class Init {
+public class Init {
 	
 
 	final DBID dbid;
 	volatile Future<AppSec> appSecFuture;
 	//ClusterMember clusterMember;
-	final DBPair coreDB;
-	final Map<String,DBPair> sideDBs=new HashMap<>();
+	final DB coreDB;
+	final Map<String,DB> sideDBs=new HashMap<>();
 	final Env env;
 	final boolean hasDB;
 	final AppScope appScope;
@@ -59,17 +60,14 @@ public 	class Init {
 		env=bs.getEnv();
 		appSecFuture=bs.getAppSecFuture();
 		if (hasDB) {
-			DB flexDB=bs.getDB();
-			DB boundedDB=flexDB.clone();
-			initDB("core",true, boundedDB);
-			initDB("core",false, flexDB);
-			dbid=new DBID(flexDB,"seq");
-			coreDB=new DBPair(boundedDB, flexDB);
+			coreDB=bs.getDB();
+			initDB("core",coreDB);
+			dbid=new DBID(coreDB,"seq");
 		} else {
 			dbid=null;
 			coreDB=null;
 		}
-		JsonObject allDBsConf = JsonUtils.getJsonObject(env.getConfiguration(), "db");
+		JsonObject allDBsConf = JsonUtils.getJsonObject(env.getConfiguration(), "database");
 
 		if (null!=allDBsConf && !bs.isDBDisabled())for (Entry<String, JsonElement> e : allDBsConf.entrySet()) {
 			String dbName=e.getKey();
@@ -88,13 +86,10 @@ public 	class Init {
 			if (dbpasswordBootstrapPropertyName!=null && bs.getProperties().containsKey(dbpasswordBootstrapPropertyName)) {
 				dbpassword=bs.getProperties().getProperty(dbpasswordBootstrapPropertyName);
 			}
-			DB flexDB=DB.create(dburl, dbuser, dbpassword);
-			flexDB=BootstrapEnv.reinit(flexDB, env.getConfiguration(), dbName, dburl, dbuser, dbpassword);
-			DB boundedDB=flexDB.clone();
-			initDB(dbName,true, boundedDB);
-			initDB(dbName,false, flexDB);
-			DBPair pair = new DBPair(boundedDB, flexDB);
-			sideDBs.put(dbName, pair);
+			DB db=DB.create(dburl, dbuser, dbpassword);
+			db=BootstrapEnv.reinit(db, env.getConfiguration(), dbName, dburl, dbuser, dbpassword);
+			initDB(dbName, db);
+			sideDBs.put(dbName, db);
 		}
 		if (coreDB!=null) {
 			sideDBs.put("core", coreDB);
@@ -105,56 +100,60 @@ public 	class Init {
 		return hasDB;
 	}
 
-	private void initDB(String name, boolean bounded, DB db) {
-		String poolName=bounded?"bounded":"flex";
-		db.setMaxCachedPreparedStatements(JsonUtils.getInteger(50, env.getConfiguration(),"db", name, "pool", poolName, "maxCachedPreparedStatements"));
-		db.setMaxConnections(JsonUtils.getInteger(5, env.getConfiguration(), "db", name, "pool", poolName, "maxConnections"));
-		db.setRetryTimeout(TimeUnit.MILLISECONDS, JsonUtils.getLong(20000L,env.getConfiguration(),"db", name, "pool", poolName, "retryTimeoutMilliseconds"));
+	private void initDB(String name, DB db) {
+		int maxCachedPreparedStatements=JsonUtils.getInteger(50, env.getConfiguration(),"database", name, "maxCachedPreparedStatements");
+		db.setMaxCachedPreparedStatements(maxCachedPreparedStatements);
+		int maxConnections=JsonUtils.getInteger(5, env.getConfiguration(), "database", name, "maxConnections");
+		db.setMaxConnections(maxConnections);
+		long retryTimeoutMilliseconds=JsonUtils.getLong(20000L,env.getConfiguration(),"database", name,  "retryTimeoutMilliseconds");
+		db.setRetryTimeout(TimeUnit.MILLISECONDS, retryTimeoutMilliseconds);
+		int transactionIsolation=JsonUtils.getInteger(Connection.TRANSACTION_READ_COMMITTED, env.getConfiguration(), "database", name, "transactionIsolation");
+		db.setTransactionIsolation(transactionIsolation);
 		
-		//"db":{"pool":{"flex":{"initStatements"
-		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getConfiguration(), "db", name, "pool", poolName, "initStatements")) {
+		int batchSize=JsonUtils.getInteger(128, env.getConfiguration(), "database", name, "batchSize");
+		db.setBatchSize(batchSize);
+		
+		long overborrowPenaltyTimeoutMilliseconds=JsonUtils.getLong(200L,env.getConfiguration(),"database", name,  "overborrowPenaltyTimeoutMilliseconds");
+		db.setOverborrowPenaltyTimeout(TimeUnit.MILLISECONDS, overborrowPenaltyTimeoutMilliseconds);
+		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getConfiguration(), "database", name, "initStatements")) {
 			String onOpen=JsonUtils.getString(e, "onOpen");
 			String onClose=JsonUtils.getString(e, "onClose");
 			boolean autoCommit=JsonUtils.getBool(e, "autoCommit");
 			db.addInitSqlWithCleanup(autoCommit, onOpen, onClose);
 		}
-		db.allowOverborrow(!bounded);
+		boolean allowOverborrow=JsonUtils.getBoolean(true,env.getConfiguration(), "database", name, "allowOverborrow");
+		db.allowOverborrow(allowOverborrow);
 	}
 
 
 	public final Properties getBootstrapProperties() {return bootstrapProperties;}
 	
 
-	public final DB getFlexDB() {
+	public final DB getDB() {
 		if (!hasDB()) throw new RuntimeException("core DB is not available");
-		return coreDB.flexDB;
+		return coreDB;
 	}
-	public final DB getBoundedDB() {
-		if (!hasDB()) throw new RuntimeException("core DB is not available");
-		return coreDB.boundedDB;
-	}
-	public void destroy() {
-		for (DBPair pair : sideDBs.values()) {
-			if (pair!=null) {
-				if (pair.boundedDB!=null) pair.boundedDB.close();
-				if (pair.flexDB!=null) pair.flexDB.close();					
-			}
+	public final DB getDB(String name) {
+		if (!sideDBs.containsKey(name)) {
+			if (name==null) name="null";
+			throw new RuntimeException(name+" DB is not available");
 		}
+		return sideDBs.get(name);
 	}
-	public final DB getFlexDB(String dbName) {
-		DBPair pair = sideDBs.get(dbName);
-		if (pair==null || pair.flexDB==null) throw new RuntimeException(dbName+" DB is not available");
-		return pair.flexDB;
+	public final boolean hasDB(String name) {			
+		return sideDBs.get(name)!=null;
 	}
-	public final DB getBoundedDB(String dbName) {
-		DBPair pair = sideDBs.get(dbName);
-		if (pair==null || pair.boundedDB==null) throw new RuntimeException(dbName+" DB is not available");
-		return pair.boundedDB;
+
+	
+	public void destroy() {
+		for (DB db : sideDBs.values()) {
+			if (db!=null) db.close();
+		}
 	}
 	public final Env getEnv() {
 		return env;
 	}
-	public final DBID getDbid() {
+	public final DBID getDBID() {
 		return dbid;
 	}
 	public final DictionaryWord getDictionaryWord(String word) {return getDefaultDictionaryBase().word(word);}

@@ -1,18 +1,5 @@
 /*
- * Copyright (c) 2009-2015, Alex Raybosh
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 3
- * as published by the Free Software Foundation.
- * http://www.gnu.org/licenses/lgpl-3.0.html  
- * 
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- * 
+ * 2009-2015, Alex Raybosh
  */
 
 package appenv.db.impl;
@@ -570,6 +557,7 @@ public class DBImpl extends DB {
 	}
 	
 	private <Ret> void handleFailure(ConnectionWrap cw, StatementBlock<Ret> tb, int cnt, long start, SQLException ex) throws SQLException, InterruptedException {
+		// FAILED EXECUTION
 		if (intrinsics.isNeverRetryable(ex)) throw ex;
 		long now=System.currentTimeMillis();
 		if (now-start>retryTimeout) {
@@ -650,6 +638,10 @@ public class DBImpl extends DB {
 	public void setRetryTimeout(TimeUnit tu, long timeout) {
 		retryTimeout=TimeUnit.MILLISECONDS.convert(timeout, tu);
 	}
+	@Override
+	public void setOverborrowPenaltyTimeout(TimeUnit tu, long timeout) {
+		overborrowPenaltyTimeout=TimeUnit.MILLISECONDS.convert(timeout, tu);
+	}
 	
 	
 
@@ -677,6 +669,11 @@ public class DBImpl extends DB {
 		public String getUseDatabaseSQL(String db) {
 			return "use "+db;
 		}
+		@Override
+		public boolean canCleanTempTablesOnCommit() {
+			return true;
+		}
+
 	}
 
 	private DBIntristics getOracleIntristics() {
@@ -741,6 +738,11 @@ public class DBImpl extends DB {
 			public String getDefaultDatabaseSQL() {
 				return "select database()";
 			}
+			@Override
+			public boolean canCleanTempTablesOnCommit() {
+				return false;
+			}
+			
 		};
 	}
 	
@@ -1111,7 +1113,7 @@ public class DBImpl extends DB {
 			if (split.length==2)
 				return new TableName(null, split[0], split[1]);
 			else
-				return new TableName(null, null, split[1]);
+				return new TableName(null, null, split[0]);
 		default:
 			throw new RuntimeException("Unimplemented feature");
 		}
@@ -1139,11 +1141,5 @@ public class DBImpl extends DB {
 	public String getVersionComment() {
 		return versionComment;
 	}
-
-
-
-
-
-
 	
 }

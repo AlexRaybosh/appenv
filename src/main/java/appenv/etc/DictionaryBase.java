@@ -88,7 +88,7 @@ public class DictionaryBase {
 			public int getMaxQueuedRequests() {return JsonUtils.getInteger(10000, appScope.getConfiguration(),"etc","dictionary",base,"queueSize");}
 			public int getMaxBulkSize() {return JsonUtils.getInteger(256, appScope.getConfiguration(),"etc","dictionary",base,"bulkSize");}
 		});
-		mysqlDialect=appScope.getFlexDB().getDialect()==Dialect.MYSQL || appScope.getFlexDB().getDialect()==Dialect.DRIZZLE_MYSQL || appScope.getFlexDB().getDialect()==Dialect.DRIZZLE;  
+		mysqlDialect=!appScope.getDB().getIntrinsics().canCleanTempTablesOnCommit();  
 		String straightJoin=mysqlDialect?"straight_join":"join";
 		
 		selectByNameSql="select t.t1, d.id from common_tmp t "+straightJoin+" "+tableName+" d on (t.t1=d.word) ";
@@ -107,7 +107,7 @@ public class DictionaryBase {
 		if (bulk.size()==1) {
 			Request<Boolean> r = bulk.get(0);
 			final String name=(String)r.getArgs()[0];
-			Boolean exists=Utils.toLong( appScope.getFlexDB().selectSingle(selectSingleByNameSql, true, name)) !=null;
+			Boolean exists=Utils.toLong( appScope.getDB().selectSingle(selectSingleByNameSql, true, name)) !=null;
 			r.setResult(exists);
 			return;
 		}
@@ -119,9 +119,9 @@ public class DictionaryBase {
 			if (lst==null) {lst=new ArrayList<>(1);	map.put(str, lst);}
 			lst.add(r);
 		}
-		appScope.getFlexDB().commit(new StatementBlock<Void>() {
+		appScope.getDB().commit(new StatementBlock<Void>() {
 			public Void execute(ConnectionWrap cw) throws SQLException, InterruptedException {
-				if (mysqlDialect) cw.update("delete from common_tmp", true); // only for mysql
+				if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true); // only for mysql
 				cw.batchInsertSingleColumn("insert into common_tmp (t1) values (?)", map.keySet());
 				for (Object[] row : cw.select(selectByNameSql,true)) {
 					String name=Utils.toString(row[0]);
@@ -131,7 +131,7 @@ public class DictionaryBase {
 						for (Request<Boolean> r : lst) r.setResult(true);
 					}
 				}
-				if (mysqlDialect) cw.update("delete from common_tmp", true); // only for mysql
+				if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true); // only for mysql
 				return null;
 			}
 			public boolean onError(ConnectionWrap cw, boolean willAttemptToRetry, SQLException ex, long start, long now) throws SQLException, InterruptedException {
@@ -146,7 +146,7 @@ public class DictionaryBase {
 		if (bulk.size()==1) {
 			Request<DictionaryWord> r = bulk.get(0);
 			final String name=(String)r.getArgs()[0];
-			Long id=appScope.getFlexDB().commit(new StatementBlock<Long>() {
+			Long id=appScope.getDB().commit(new StatementBlock<Long>() {
 				public Long execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 					Long id=Utils.toLong( cw.selectSingle(selectSingleByNameSql, true, name) );
 					if (id!=null) return id;
@@ -174,7 +174,7 @@ public class DictionaryBase {
 		}
 		long now=appScope.getTime();
 		final List<DictionaryWord> fresh=new ArrayList<>(map.size());
-		Map<String, Long> nameToId = appScope.getFlexDB().commit(new StatementBlock<Map<String,Long>>() {
+		Map<String, Long> nameToId = appScope.getDB().commit(new StatementBlock<Map<String,Long>>() {
 			public Map<String,Long> execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				fresh.clear();
 				Map<String,Long> ret=new HashMap<>(map.size());
@@ -232,7 +232,7 @@ public class DictionaryBase {
 		if (bulk.size()==1) {
 			Request<Boolean> r = bulk.get(0);
 			Long id=(Long)r.getArgs()[0];
-			String name=Utils.toString( appScope.getFlexDB().selectSingle(selectSingleByIdSql, true, id) );
+			String name=Utils.toString( appScope.getDB().selectSingle(selectSingleByIdSql, true, id) );
 			r.setResult(name!=null);
 			return;
 		}
@@ -244,7 +244,7 @@ public class DictionaryBase {
 			lst.add(r);
 		}
 		 
-		appScope.getFlexDB().commit(new StatementBlock<List<DictionaryWord> >() {
+		appScope.getDB().commit(new StatementBlock<List<DictionaryWord> >() {
 			public List<DictionaryWord>  execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				if (mysqlDialect) cw.update("delete from common_tmp", true); // only for mysql
 				cw.batchInsertSingleColumn("insert into common_tmp (i1) values (?)", map.keySet());
@@ -267,7 +267,7 @@ public class DictionaryBase {
 		if (bulk.size()==1) {
 			Request<DictionaryWord> r = bulk.get(0);
 			Long id=(Long)r.getArgs()[0];
-			String name=Utils.toString( appScope.getFlexDB().selectSingle(selectSingleByIdSql, true, id) );
+			String name=Utils.toString( appScope.getDB().selectSingle(selectSingleByIdSql, true, id) );
 			if (name==null) {
 				RuntimeException ex = new RuntimeException("id "+id+" does not exist in "+tableName);
 				r.errored(ex);
@@ -289,7 +289,7 @@ public class DictionaryBase {
 			lst.add(r);
 		}
 		 
-		List<DictionaryWord> fresh=appScope.getFlexDB().commit(new StatementBlock<List<DictionaryWord> >() {
+		List<DictionaryWord> fresh=appScope.getDB().commit(new StatementBlock<List<DictionaryWord> >() {
 			public List<DictionaryWord>  execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 				List<DictionaryWord> fresh=new ArrayList<>(map.size());
 				if (mysqlDialect) cw.update("delete from common_tmp", true); // only for mysql

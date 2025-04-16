@@ -42,13 +42,11 @@ public class AppEnv {
 	
 
 	public static boolean hasDB() {return getAppScope().hasDB();}
-	public static DB flexDB() {return getAppScope().getFlexDB();}
-	public static DB db() {return getAppScope().getBoundedDB();}
+	public static DB db() {return getAppScope().getDB();}
 	
-	public static DB boundedDB() {return getAppScope().getBoundedDB();}
 	
-	public static DB boundedDB(String dbName) {return getAppScope().getBoundedDB(dbName);}
-	public static DB flexDB(String dbName) {return getAppScope().getFlexDB(dbName);}
+	public static DB db(String dbName) {return getAppScope().getDB(dbName);}
+
 	
 	public static Long systemProcessId() {return getAppScope().getSystemProcessId();}
 	public static boolean subSystemRegistered(String name) {return getAppScope().hasSubSystem(name);}

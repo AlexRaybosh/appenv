@@ -1,5 +1,4 @@
-package db;
-
+package test.db;
 
 import appenv.db.DB;
 

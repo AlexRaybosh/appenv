@@ -1,18 +1,5 @@
 /*
- * Copyright (c) 2009-2015, Alex Raybosh
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 3
- * as published by the Free Software Foundation.
- * http://www.gnu.org/licenses/lgpl-3.0.html  
- * 
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- * 
+ * 2009-2015, Alex Raybosh
  */
 
 package appenv.util;
@@ -46,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import appenv.async.AsyncEngine;
+import appenv.db.impl.ExtendedSQLException;
 import sun.misc.Unsafe;
 
 public final class Utils {
@@ -754,8 +742,10 @@ public final class Utils {
 		
 		Throwable current=e;
 		SQLException lastSQLException=null;
+		ExtendedSQLException lastExtendedSQLException=null;
 		InterruptedException lastInterrupted=null;
 		for (int i=0;i<100;++i) {
+			if (current instanceof ExtendedSQLException)  lastExtendedSQLException=(ExtendedSQLException)current;
 			if (current instanceof SQLException)  lastSQLException=(SQLException)current;
 			if (current instanceof InterruptedException)  lastInterrupted=(InterruptedException)current;
 			Throwable c=current.getCause();
@@ -763,6 +753,7 @@ public final class Utils {
 				break;
 			current=c;
 		}
+		if (lastExtendedSQLException!=null) throw lastExtendedSQLException;
 		if (lastSQLException!=null) throw lastSQLException;
 		if (lastInterrupted!=null) throw lastInterrupted;
 		if (current instanceof Exception) return (Exception)current;
@@ -917,9 +908,9 @@ public final class Utils {
 	}
 
 	private static String deriveCannonicalHostName() {
-		try {
+		/*try {
 			
-			String name=new String(collectStdout("/bin/sh", 
+			String name=new String(collectStdout("/bin/bash", 
 					"-c", 
 					"PATH=/bin:/usr/bin:$PATH nslookup `hostname`| perl -ne \"m/^\\s*Name:\\s+(.*?)\\s*$/ && print \\$1\""), UTF8);
 			if (name!=null) {
@@ -928,7 +919,7 @@ public final class Utils {
 			}
 			
 		} catch (Exception e) {
-		}
+		}*/
 		try {return InetAddress.getLocalHost().getCanonicalHostName();} catch (Exception e) {
 			return null;
 		}

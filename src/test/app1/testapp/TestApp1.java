@@ -20,7 +20,7 @@ public class TestApp1 {
 		
 		
 		
-		DictionaryWord dw=AppEnv.word(3);
+		DictionaryWord dw=AppEnv.word("three");
 		System.out.println(dw.getWord());
 		
 		Thread.sleep(1000);

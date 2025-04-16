@@ -1,18 +1,5 @@
 /*
- * Copyright (c) 2009-2015, Alex Raybosh
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 3
- * as published by the Free Software Foundation.
- * http://www.gnu.org/licenses/lgpl-3.0.html  
- * 
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- * 
+ * 2009-2015, Alex Raybosh
  */
 
 package appenv.db.impl;
@@ -141,6 +128,7 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 	 */
 	@Override
 	public void close() throws InterruptedException  {
+		//System.err.println("CLOSING: "+getConnectionId());
 		closeStatements();
 		closeSticky();
 		close(con);
@@ -798,54 +786,79 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 				close(st);
 			}
 			db.profilerSetConnectionInfo(ticket, conId);
-			syncUpInitStatements();
-			con.setAutoCommit(autoCommit);
 			con.setTransactionIsolation(db.getTransactionIsolation());
+			con.setAutoCommit(autoCommit);			
+			syncUpInitStatements();
 		}
 		return con;
 	}
 
+	private boolean needAutocommitFlip() {
+		switch (db.getDialect()) {
+		case DRIZZLE:
+		case DRIZZLE_MYSQL:
+		case MYSQL:			
+			return true;
+		default:
+			return false;
+		}
+	}
 	/*
-	 * returns true - need to resync autocommit, false - no need
+	 * returns true - need to restore autocommit
 	 */
 	private boolean stickyRunAdd(TreeMap<Long, DBImpl.StickyBlock> lst) throws SQLException, InterruptedException {
 		if (con==null) return false;
-		boolean firstFlipAutoCommit=true;
+		boolean reset=false;
+		if (needAutocommitFlip() && !lst.isEmpty() && !autoCommit) {
+			con.setAutoCommit(true);
+			reset=true;
+		}
 		for(DBImpl.StickyBlock sb : lst.values()) {
 			if (sb.onConnectionInitBlock!=null) {
-				if (!autoCommit && firstFlipAutoCommit) {
-					firstFlipAutoCommit=false;
-					try {con.setAutoCommit(true);} catch (SQLException e) {};
-				}
 				boolean success=false;
 				try {
+					//System.err.println("RUNNING INIT: "+getConnectionId()+" - "+sb.onConnectionInitBlock.getDebugString()+" autocommit: "+autoCommit);
 					sb.onConnectionInitBlock.execute(this);
 					success=true;
+				} catch (SQLException e) {
+					//System.err.println("FAILED INIT: "+getConnectionId()+" - "+sb.onConnectionInitBlock.getDebugString()+" autocommit: "+autoCommit+" " +e.getMessage());
+					//
+					throw e;
 				} finally {
-					if (!success && sb.onConnectionCloseBlock!=null) {
-						try {sb.onConnectionCloseBlock.execute(this);} catch (Throwable t) {}
+					if (!success && sb.onConnectionCloseBlock!=null && !con.isClosed()) {
+						try {
+							//System.err.println("RUNNING CLOSE: "+getConnectionId()+" - "+sb.onConnectionCloseBlock.getDebugString()+" autocommit: "+autoCommit);
+							sb.onConnectionCloseBlock.execute(this);
+						} catch (Exception t) {
+							//System.err.println("FAILED CLOSE: "+getConnectionId()+" - "+sb.onConnectionCloseBlock.getDebugString()+" autocommit: "+autoCommit+" : " +t.getMessage());	
+						}
 					}
 				}
 			}
 		}
-		return !firstFlipAutoCommit;
+		return reset;
 	}
 	/*
-	 * returns true - need to set autocommit=false
+	 * returns true - need to reset
 	 */
-	private boolean stickyRunClose(TreeMap<Long, DBImpl.StickyBlock> closes) {
-		if (con==null) return false;
-		boolean firstFlipAutoCommit=true;
+	private boolean stickyRunClose(TreeMap<Long, DBImpl.StickyBlock> closes) throws SQLException {
+		if (con==null || con.isClosed()) return false;
+		boolean reset=false;
+		if (needAutocommitFlip() && !closes.isEmpty() && !autoCommit) {
+			con.setAutoCommit(true);
+			reset=true;
+		}		
 		for(DBImpl.StickyBlock sb : closes.descendingMap().values()) {
 			if (sb.onConnectionCloseBlock!=null) {
-				if (!autoCommit && firstFlipAutoCommit) {
-					firstFlipAutoCommit=false;
-					try {con.setAutoCommit(true);} catch (SQLException e) {};
+				try {
+					//System.err.println("RUNNING CLOSE: "+getConnectionId()+" - "+sb.onConnectionCloseBlock.getDebugString()+" autocommit: "+autoCommit);
+					sb.onConnectionCloseBlock.execute(this);
+				} catch (Exception t) {
+					//System.err.println("FAILED CLOSE: "+getConnectionId()+" - "+sb.onConnectionCloseBlock.getDebugString()+" autocommit: "+autoCommit+" : " +t.getMessage());					
 				}
-				try {sb.onConnectionCloseBlock.execute(this);} catch (Throwable t) {}
 			}
 		}
-		return !firstFlipAutoCommit;
+		return reset;
 	}
 	
 	@Override
@@ -864,15 +877,18 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 			} finally {
 				cx.getLock().unlock();
 			}
-			boolean s1=stickyRunAdd(adds);
-			boolean s2=stickyRunClose(closes);
-			if (s1 || s2) con.setAutoCommit(false);
+			boolean r1=stickyRunAdd(adds);
+			boolean r2=stickyRunClose(closes);
+			if (r1 || r2) con.setAutoCommit(autoCommit);
 		}
 	}
 
 
 	private void closeSticky() throws InterruptedException {
-		stickyRunClose(knownInitBlocks);
+		try {
+			if (con!=null && !con.isClosed()) stickyRunClose(knownInitBlocks);
+		} catch (SQLException e) {
+		}
 		cx.getLock().lock();
 		try {
 			knownInitBlocks.clear();

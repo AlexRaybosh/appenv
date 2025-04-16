@@ -1,18 +1,5 @@
 /*
- * Copyright (c) 2009-2015, Alex Raybosh
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Lesser General Public License version 3
- * as published by the Free Software Foundation.
- * http://www.gnu.org/licenses/lgpl-3.0.html  
- * 
- * This software is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * Lesser General Public License for more details.
- * 
+ * 2009-2015, Alex Raybosh
  */
 
 package appenv.db;
@@ -22,8 +9,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import appenv.async.Request;
+import appenv.util.UnorderedRow;
 
 /**
  * Encapsulates database connection. The underlying connection can be closed/reopened. Each connection is dedicated to either autocommit=true, or autocommit=false. 
@@ -93,6 +82,18 @@ public abstract class ConnectionWrap {
 			public int getColumnCount() {return row.length;}
 		}); 
 	}
+	public void batchInsertUnorderedRows(String sql, final Collection<UnorderedRow<Object>> argsRows) throws SQLException, InterruptedException {
+		batchInsert(sql,new BatchInputIterator() {
+			Iterator<UnorderedRow<Object>> it = argsRows.iterator();
+			UnorderedRow<?> row=null;
+			public boolean hasNext() {return it.hasNext();}
+			public void next() {row=it.next();}
+			public Object get(int idx) {return row.get()[idx];}
+			public void reset() {it=argsRows.iterator();}
+			public int getColumnCount() {return row.get().length;}
+		});
+	 
+	}
 	public <T> void batchInsertRequests(String sql, final List<Request<T>> bulk) throws SQLException, InterruptedException {
 		batchInsert(sql, new BatchInputIterator() {
 			Iterator<Request<T>> it=bulk.iterator();
@@ -110,6 +111,10 @@ public abstract class ConnectionWrap {
 	public abstract void syncUpInitStatements() throws SQLException, InterruptedException;
 	public abstract boolean getAutoCommit();
 	public abstract void beforeCommit(StatementBlock<Void> statementBlock);
+	public abstract Object getConnectionId();
 	
+	public boolean needsTempTableCleanup() {
+		return !getDB().getIntrinsics().canCleanTempTablesOnCommit(); 
+	}
 
 }

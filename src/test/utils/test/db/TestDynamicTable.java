@@ -1,4 +1,4 @@
-package db;
+package test.db;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
