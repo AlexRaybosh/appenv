@@ -1,6 +1,5 @@
 package appenv.env;
 
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -9,15 +8,13 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Future;
-
-import org.apache.commons.codec.binary.Base64;
 
 import com.google.gson.JsonObject;
 
 import appenv.db.DB;
 import appenv.etc.DictionaryWord;
+import appenv.task.TaskQueue;
 import appenv.util.EncodingUtils;
 import appenv.util.Utils;
 
@@ -38,7 +35,13 @@ public class AppEnv {
 	private static class Holder {
 		final static AppScope appScope=AppScope.createNonDefaultAppScope(defaultEnvOverride);
 	}
-	public static AppScope getAppScope() {return Holder.appScope;}
+	public static AppScope getAppScope() {
+		try {
+			return Holder.appScope;
+		} catch (Throwable e) {
+			return Utils.<AppScope>rethrowRuntimeException(e);
+		}		
+	}
 	
 	
 	
@@ -176,5 +179,6 @@ public class AppEnv {
 		return v.toString();
 	}
 
+	public static TaskQueue taskQueue() {return getAppScope().getTaskQueue();}	
 	
 }

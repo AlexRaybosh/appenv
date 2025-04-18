@@ -73,10 +73,17 @@ public class BootstrapEnv {
 					logerr("Configuration "+name+" contains invalid include entry "+entry+", skipping it");	
 				}
 			} catch (Exception e) {
-				logerr("Configuration "+name+" contains invalid include entry "+entry+", failed to read it: "+e.getMessage());
-				continue;
+				String err="Configuration "+name+" contains invalid include entry "+entry+", failed to read it: "+e.getMessage();
+				logerr(err);
+				throw new RuntimeException(err);
 			}
 		}
+/*		
+		for (Entry<String, JsonObject> e : allConfigs.entrySet()) {
+			System.out.println(e.getKey()+" - "+e.getValue());
+		}
+		System.out.println("-----------");
+*/		
 		conf.remove("include");
 	}
 

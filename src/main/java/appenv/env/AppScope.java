@@ -27,6 +27,7 @@ import appenv.env.boot.SubSystemStub;
 import appenv.etc.DictionaryBase;
 import appenv.etc.DictionaryWord;
 import appenv.susbsystems.ProcessMaintenance;
+import appenv.task.TaskQueue;
 import appenv.util.DummyErrorFuture;
 import appenv.util.DummyFuture;
 import appenv.util.Utils;
@@ -45,6 +46,7 @@ public class AppScope {
 	
 	
 	public final static String PROCESS_MAINTENANCE="processMaintenance";
+	public final static String TASK_QUEUE="taskQueue";
 	
 
 	public static AppScope createNonDefaultAppScope() {
@@ -219,6 +221,10 @@ public class AppScope {
 		}
 		return null;
 	}
+	
+	public final TaskQueue getTaskQueue() {
+		return this.<TaskQueue>getSubSystem(TASK_QUEUE);
+	}	
 	
 	public final boolean hasSubSystem(String name) {
 		return subsystems.containsKey(name);

@@ -8,15 +8,14 @@ import appenv.util.JsonUtils;
 public class TestApp1 {
 
 	public static void main(String[] strs) throws Exception {
-		//AppEnv.presetEnvName("test1");
-		//AppScope.presetBootstrapResource("/home/alex/workspace/arweb/src/main/java");
+		AppEnv.presetEnvName("test3");
 		System.out.println(AppEnv.envName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.getConfiguration()));
 		System.out.println(AppEnv.systemProcessId());
 		//System.exit(0);
 		AppEnv.ready();
 		
-		AppEnv.logerr("test error", new RuntimeException("zzz"));
+		//AppEnv.logerr("test error", new RuntimeException("zzz"));
 		
 		
 		
@@ -25,7 +24,6 @@ public class TestApp1 {
 		
 		Thread.sleep(1000);
 		AppEnv.reloadEnvironment();
-		
 		
 		Thread.sleep(1000);
 		AppEnv.reloadSubSystems();

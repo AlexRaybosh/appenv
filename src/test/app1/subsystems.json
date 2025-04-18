@@ -1,59 +1,61 @@
 {
-	"env" : {
-		"test1" : {
-			"subsystems" : {
-				"initConcurrency" : 1,
-				"entries" : {
-					"processMaintenance" : null,
-					"test" : null
+	"env": {
+		"test1": {
+			"subsystems": {
+				"initConcurrency": 1,
+				"entries": {
+					"processMaintenance": null
 				}
 			}
 		},
-		"dev" : {
-			"subsystems" : {
-				"entries" : {
-					"test" : null
+		"test3": {
+			"subsystems": {
+				"initConcurrency": 2,
+				"entries": {
+					"test": {
+						"class": "testapp.TestSubSystem",
+						"depends" : ["processMaintenance"],
+						"timers": {
+							"tick": {
+								"startAfterSeconds": 1,
+								"timerIntervalSeconds": 0.3
+							},
+							"tock": {
+								"timerIntervalSeconds": 0.6
+							}
+						}
+					}
+				}
+			}
+		},
+		"dev": {
+			"subsystems": {
+				"entries": {
+					"test": null
 				}
 			}
 		}
 	},
-
-	
-	"defaults" : {
-		"subsystems" : {
-			"initConcurrency" : 5,
-			"entries" : {
-				"processMaintenance" : {
-					"class" : "appenv.susbsystems.ProcessMaintenance",
-					"deadAfterMilliseconds" : 5000,
-					"removeDeadAfterMilliseconds" : 30000,
-					
-					"timers" : {
-						"touch" : {
-							"startAfterMilliseconds" : 0,
-							"milliseconds" : 1000
+	"defaults": {
+		"subsystems": {
+			"initConcurrency": 5,
+			"entries": {
+				"processMaintenance": {
+					"class": "appenv.susbsystems.ProcessMaintenance",
+					"considerDeadAfterInactivitySeconds": 10.0,
+					"removeDeadAfterSeconds": 30.0,
+					"timers": {
+						"touch": {
+							"startAfterSeconds": 0,
+							"timerIntervalSeconds": 1
 						},
-						"maintenance" : {
-							"startAfterMilliseconds" : 1000,
-							"milliseconds" : 1000
+						"maintenance": {
+							"startAfterSeconds": 1.0,
+							"timerIntervalSeconds": 1
 						},
-						"lsof" : {
-							"startAfterMilliseconds" : 10000,
-							"milliseconds" : 1000
-						}
-					}
-				},
-			
-				"test" : {
-					"class" : "testapp.TestSubSystem",
-					"depends" : ["processMaintenance"],
-					"timers" : {
-						"tick" : {
-							"startAfterMilliseconds" : 1000,
-							"milliseconds" : 100
-						},
-						"tock" : {
-							"milliseconds" : 200
+						"lsof": {
+							"startAfterSeconds": 10.0,
+							"timerIntervalSeconds": 1
 						}
 					}
 				}

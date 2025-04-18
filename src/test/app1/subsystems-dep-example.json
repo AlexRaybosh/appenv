@@ -25,21 +25,21 @@
 			"entries" : {
 				"processMaintenance" : {
 					"class" : "appenv.susbsystems.ProcessMaintenance",
-					"deadAfterMilliseconds" : 5000,
-					"removeDeadAfterMilliseconds" : 30000,
+					"considerDeadAfterInactivitySeconds" : 5.0,
+					"removeDeadAfterSeconds" : 30.0,
 					
 					"timers" : {
 						"touch" : {
-							"startAfterMilliseconds" : 0,
-							"milliseconds" : 1000
+							"startAfterSeconds" : 0,
+							"timerIntervalSeconds" : 1
 						},
 						"maintenance" : {
-							"startAfterMilliseconds" : 1000,
-							"milliseconds" : 1000
+							"startAfterSeconds" : 1,
+							"timerIntervalSeconds" : 1
 						},
 						"lsof" : {
-							"startAfterMilliseconds" : 10000,
-							"milliseconds" : 1000
+							"startAfterSeconds" : 10,
+							"timerIntervalSeconds" : 1
 						}
 					}
 				},
@@ -49,11 +49,11 @@
 					"depends" : ["processMaintenance"],
 					"timers" : {
 						"tick" : {
-							"startAfterMilliseconds" : 1000,
-							"milliseconds" : 100
+							"startAfterSeconds" : 1,
+							"timerIntervalSeconds" : 0.1
 						},
 						"tock" : {
-							"milliseconds" : 200
+							"timerIntervalSeconds" : 0.2
 						}
 					}
 				},

@@ -73,14 +73,14 @@ public class SubSystemStub {
 			String perName=e.getKey();
 			JsonObject perConf = JsonUtils.getJsonObject(e.getValue());
 			if (perConf==null) continue;
-			long start=JsonUtils.getLong(0L, perConf, "startAfterMilliseconds");
-			Long interval=JsonUtils.getLong(perConf, "milliseconds");
-			if (interval==null || interval<=0) {
-				BootstrapEnv.logerr("Ignore periodical "+perName+" in "+conf+", no valid 'milliseconds' property defined in: "+perConf);
+			long start=(long)(1000*JsonUtils.getNumber(0, perConf,  "startAfterSeconds").doubleValue());
+			Number interval=JsonUtils.getNumber(perConf,  "timerIntervalSeconds");
+			if (interval==null || (long)(1000*interval.doubleValue())<=0) {
+				BootstrapEnv.logerr("Ignore periodical "+perName+" in "+conf+", no valid 'timerIntervalSeconds' property defined in: "+perConf);
 				continue;
 			}
 			
-			Timer p=new Timer(perName, start, interval);
+			Timer p=new Timer(perName, start, (long)(1000*interval.doubleValue()));
 			timersMap.put(perName, p);
 		}
 		

@@ -9,8 +9,7 @@ public class TestSubSystem extends SubSystem {
 
 	@Override
 	public boolean init(boolean initial, JsonObject conf) {
-		System.out.println(getName()+" : "+conf);
-		System.out.println(getAppScope().getSystemProcessId());
+		System.out.println("sybsystem " + getName()+" with configuration : "+conf+"\n and processId: "+getAppScope().getSystemProcessId());
 		return true;
 	}
 

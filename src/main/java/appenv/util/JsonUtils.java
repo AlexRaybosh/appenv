@@ -183,6 +183,10 @@ public class JsonUtils {
 		JsonElement e=getJsonElement(obj, path);
 		return e==null?null:e.getAsNumber();
 	}
+	public static Number getNumber(Number fallback, JsonElement obj,String... path) {
+		Number n=getNumber(obj, path);
+		return n==null?fallback:n;
+	}	
 	public static String getString(String fallback, JsonElement obj,String... path) {
 		String ret=getString(obj,path);
 		return ret==null?fallback:ret;

@@ -47,11 +47,12 @@ public class ProcessMaintenance extends SubSystem {
 		final String cmdLine=Utils.getProcessCmdLine();
 		final Long start=Utils.getProcessStartTime();
 		
-		deadAfterMilliseconds=JsonUtils.getLong(10000L, conf,  "deadAfterMilliseconds");
-		if (deadAfterMilliseconds<=0) deadAfterMilliseconds=1000L;
 		
-		removeDeadAfterMilliseconds=JsonUtils.getLong(10000L, conf,  "removeDeadAfterMilliseconds");
-		if (removeDeadAfterMilliseconds<=0) removeDeadAfterMilliseconds=1000L;
+		deadAfterMilliseconds=(long)(1000*JsonUtils.getNumber(10, conf,  "considerDeadAfterInactivitySeconds").doubleValue());
+		if (deadAfterMilliseconds<=0) deadAfterMilliseconds=1L;
+		
+		removeDeadAfterMilliseconds= (long)(1000*JsonUtils.getNumber(10, conf,  "removeDeadAfterSeconds").doubleValue());
+		if (removeDeadAfterMilliseconds<=0) removeDeadAfterMilliseconds=1L;
 			
 		Long oldId = (initial)?null:appScope.getSystemProcessId(); // <- will deadlock without a initial check
 		this.processId=(oldId==null)? insertProcessId(hostName, pid, cmdLine, start) : oldId;
