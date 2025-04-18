@@ -57,7 +57,7 @@ public abstract class DB {
 	public <T> T selectSingle(String sql)  throws SQLException, InterruptedException {
 		return selectSingle(sql, false);
 	}
-	
+	public abstract Object[] selectFirstRow(String sql, boolean cache, Object... args) throws SQLException, InterruptedException;	
 	public abstract int update(String sql, boolean cache, Object... args) throws SQLException, InterruptedException;
 	public int update(String sql) throws SQLException, InterruptedException {return update(sql, false);}
 	public abstract int update(Collection<Number> genKeys, String sql, boolean cache, Object... args) throws SQLException, InterruptedException;

@@ -56,6 +56,25 @@
 							"milliseconds" : 200
 						}
 					}
+				},
+				"a" : {
+					"class" : "",
+					"enabled" : true,
+					"depends" : ["b","d"]
+				},
+				"b" : {
+					"class" : "",
+					"enabled" : true,
+					"depends" : ["c"]
+				},
+				"c" : {
+					"class" : "",
+					"enabled" : false,
+					"depends" : ["d"]
+				},
+				"d" : {
+					"enabled" : true,
+					"depends" : ["e"]
 				}
 			}
 		}

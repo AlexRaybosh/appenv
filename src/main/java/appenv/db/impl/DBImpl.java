@@ -428,6 +428,18 @@ public class DBImpl extends DB {
 			nonTxCommitContext.release(cw);
 		}
 	}
+	@Override
+	public Object[] selectFirstRow(String sql, boolean cache, Object... args) throws SQLException, InterruptedException {
+		final ConnectionWrapImpl cw=nonTxCommitContext.take();
+		try {
+			return retry(cw, new StatementBlock<Object[]>(){
+				public Object[] execute(ConnectionWrap wrap) throws SQLException, InterruptedException {
+					return cw.selectFirstRow(sql, cache, args);
+				}});
+		} finally {
+			nonTxCommitContext.release(cw);
+		}
+	}
 	/* (non-Javadoc)
 	 * @see appenv.util.db.impl.DB#select(java.lang.String, boolean, appenv.util.db.ResultSetHandler, java.lang.Object)
 	 */
@@ -1141,5 +1153,6 @@ public class DBImpl extends DB {
 	public String getVersionComment() {
 		return versionComment;
 	}
+
 	
 }

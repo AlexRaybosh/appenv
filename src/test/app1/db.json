@@ -30,9 +30,8 @@
 			},
 			"core" : {
 				"urlParams" : {
-					"socketTimeout" : 50000
+					"socketTimeout" : 60000
 				},
-				
 				"maxCachedPreparedStatements" : 2000,
 				"maxConnections" : 30, 
 				"retryTimeoutMilliseconds" : 10000,		

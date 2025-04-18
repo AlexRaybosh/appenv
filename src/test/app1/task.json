@@ -1,0 +1,22 @@
+{
+	
+	"env" : {
+		"dev" : {
+			"task" : {
+			}
+		}
+	},
+
+	"defaults" : {
+		"task" : {
+			"typeCacheSeconds" : 10,
+			"typeCacheSize" : 256,
+			"database" : "core",
+			"type" : {
+				"dummy" : {
+					"ttlMs" : 30000
+				}
+			}
+		}
+	}
+}

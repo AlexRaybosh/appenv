@@ -380,7 +380,48 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 			if (!success) rh.reset();
 		}
 	}
-
+	
+	@Override
+	public Object[] selectFirstRow(String sql, boolean cache, Object... args) throws SQLException, InterruptedException {
+		PreparedStatement ps = null;
+		Statement st = null;
+		ResultSet rs = null;
+		Object ticket=db.profilerStart(this, sql, args);
+		boolean success=false;
+		SQLException sex=null;
+		try {
+			
+			if (!cache && args.length == 0) {
+				st = getConnection(ticket).createStatement();
+				rs = st.executeQuery(sql);
+			} else {
+				ps = getPrepraredStatement(ticket,sql,cache);
+				applyArgs(ps, args);
+				rs = ps.executeQuery();
+			}
+			ResultSetMetaData rm = rs.getMetaData();
+			int numberOfColumns = rm.getColumnCount();
+			while (rs.next()) {
+				if (Thread.interrupted()) throw new InterruptedException();
+				Object[] row = new Object[numberOfColumns];
+				for (int i = 0; i < numberOfColumns; i++)
+					row[i] = normalizeGetObject(rm, rs, i + 1);
+				success=true;
+				return row;
+			}
+		} catch (SQLException ex) {		
+			sex=ex;
+			throwExtendedSQLException(sql, cache, ex, args);
+		} finally {
+			close(rs);
+			close(st);
+			if (!cache) 
+				close(ps);
+			db.profilerEnd(ticket,success,sex);
+		}
+		return null;
+	}	
+	
 	/* (non-Javadoc)
 	 * @see appenv.util.db.impl.CW#select(java.lang.String, boolean, appenv.util.db.LabelRowHandler, java.lang.Object)
 	 */
@@ -1257,6 +1298,7 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 			}
 			if (useBlob) {
 				InputStream in=(InputStream)args[pos-1];
+				/*
 				int nRead;
 				byte[] data=new byte[4096];
 				ByteArrayOutputStream buffer=new ByteArrayOutputStream();
@@ -1268,7 +1310,8 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 					throw new SQLException(e);
 				}
 				ByteArrayInputStream is=new ByteArrayInputStream(buffer.toByteArray());
-				ps.setBinaryStream(pos, is);
+				*/
+				ps.setBinaryStream(pos, in);//is);
 			} else {
 				ps.setObject(pos, args[pos-1]);
 			}

@@ -9,8 +9,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import appenv.async.Request;
 import appenv.util.UnorderedRow;
 
@@ -37,7 +35,7 @@ public abstract class ConnectionWrap {
 	public <T> T selectSingle(String sql)  throws SQLException, InterruptedException {
 		return selectSingle(sql, false);
 	}
-	
+	public abstract Object[] selectFirstRow(String sql, boolean cache, Object[] args) throws SQLException, InterruptedException;
 	public abstract int update(String sql, boolean cache, Object... args) throws SQLException, InterruptedException;
 	public int update(String sql) throws SQLException, InterruptedException {
 		return update(sql, false);
@@ -116,5 +114,6 @@ public abstract class ConnectionWrap {
 	public boolean needsTempTableCleanup() {
 		return !getDB().getIntrinsics().canCleanTempTablesOnCommit(); 
 	}
+
 
 }

@@ -1,15 +1,24 @@
 package appenv.env;
 
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Future;
+
+import org.apache.commons.codec.binary.Base64;
 
 import com.google.gson.JsonObject;
 
 import appenv.db.DB;
 import appenv.etc.DictionaryWord;
+import appenv.util.EncodingUtils;
 import appenv.util.Utils;
 
 public class AppEnv {
@@ -119,6 +128,52 @@ public class AppEnv {
 		} catch (Throwable t) {
 			throw new RuntimeException("Failed to log oringal error with msg: "+msg);
 		}
+	}
+
+	public static String timeUniquePrefix(){
+		String prefix= Long.toString( System.currentTimeMillis() >>> 14, 36);
+		if (prefix.length()<6) {
+			// pad with 0
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < 6; i++) {
+			    sb.append('0');
+			}
+			prefix=sb.substring(prefix.length()) + prefix;
+		}
+		return prefix.substring(0, 6);
+	}
+    private static class SecureRandomHolder {
+        static final SecureRandom numberGenerator = new SecureRandom();
+        static final String hostnamePrefix=initHostnamePrefix();
+        static String initHostnamePrefix() {
+        	String ch=Utils.getCanonicalHostName();
+        	MessageDigest md5;
+        	try {
+	            md5=MessageDigest.getInstance("MD5");
+	        } catch (NoSuchAlgorithmException nsae) {
+	            throw new InternalError("MD5 not supported", nsae);
+	        }
+        	byte[] m=md5.digest(ch.getBytes(StandardCharsets.US_ASCII));
+        	String v1=Long.toString(EncodingUtils.byteArrayToLong(m), 36);
+        	if (v1.charAt(0)=='-') v1=v1.substring(1);
+        	if (v1.length()>2) v1=v1.substring(v1.length()-2);
+        	return v1;
+        }
+    }
+	public static String createUniqueKey() {
+        SecureRandom ng = SecureRandomHolder.numberGenerator;
+        byte[] randomBytes = new byte[8];
+        StringBuilder v=new StringBuilder();
+        v.append(timeUniquePrefix());
+        v.append(SecureRandomHolder.hostnamePrefix);
+        while (v.length()<32) {
+            ng.nextBytes(randomBytes);
+            String t=Long.toString(EncodingUtils.byteArrayToLong(randomBytes), 36);
+            if (t.charAt(0)=='-') t=t.substring(1);
+            v.append(t);
+        }
+        if (v.length()>32) return v.substring(0,32);
+		return v.toString();
 	}
 
 	
