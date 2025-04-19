@@ -9,7 +9,7 @@
 					},
 					"maxCachedPreparedStatements" : 200,
 					"maxConnections" : 20, 
-					"retryTimeoutMilliseconds" : 5000,
+					"retryTimeoutSeconds" : 5,
 					"allowOverborrow": false,
 					"transactionIsolation" : 1
 				}
@@ -34,8 +34,8 @@
 				},
 				"maxCachedPreparedStatements" : 2000,
 				"maxConnections" : 30, 
-				"retryTimeoutMilliseconds" : 10000,		
-				"overborrowPenaltyTimeoutMilliseconds" : 100,
+				"retryTimeoutSeconds" : 10.0,		
+				"overborrowPenaltySeconds" : 0.5,
 				"batchSize" : 256,
 				"initStatements" : [
 					{

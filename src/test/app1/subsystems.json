@@ -28,6 +28,25 @@
 				}
 			}
 		},
+		"test4": {
+			"subsystems": {
+				"entries": {
+					"taskQueue": {
+						"class": "appenv.susbsystems.TaskQueueSubsystem",
+						"depends" : ["processMaintenance"],
+						"timers": {
+							"tick": {
+								"startAfterSeconds": 1,
+								"timerIntervalSeconds": 0.3
+							},
+							"tock": {
+								"timerIntervalSeconds": 0.6
+							}
+						}
+					}
+				}
+			}
+		},		
 		"dev": {
 			"subsystems": {
 				"entries": {

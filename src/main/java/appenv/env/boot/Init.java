@@ -105,7 +105,9 @@ public class Init {
 		db.setMaxCachedPreparedStatements(maxCachedPreparedStatements);
 		int maxConnections=JsonUtils.getInteger(5, env.getConfiguration(), "database", name, "maxConnections");
 		db.setMaxConnections(maxConnections);
-		long retryTimeoutMilliseconds=JsonUtils.getLong(20000L,env.getConfiguration(),"database", name,  "retryTimeoutMilliseconds");
+		
+		long retryTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(10, env.getConfiguration(),"database", name,  "retryTimeoutSeconds").doubleValue());
+		
 		db.setRetryTimeout(TimeUnit.MILLISECONDS, retryTimeoutMilliseconds);
 		int transactionIsolation=JsonUtils.getInteger(Connection.TRANSACTION_READ_COMMITTED, env.getConfiguration(), "database", name, "transactionIsolation");
 		db.setTransactionIsolation(transactionIsolation);
@@ -113,7 +115,7 @@ public class Init {
 		int batchSize=JsonUtils.getInteger(128, env.getConfiguration(), "database", name, "batchSize");
 		db.setBatchSize(batchSize);
 		
-		long overborrowPenaltyTimeoutMilliseconds=JsonUtils.getLong(200L,env.getConfiguration(),"database", name,  "overborrowPenaltyTimeoutMilliseconds");
+		long overborrowPenaltyTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(0.1, env.getConfiguration(),"database", name,  "overborrowPenaltySeconds").doubleValue());
 		db.setOverborrowPenaltyTimeout(TimeUnit.MILLISECONDS, overborrowPenaltyTimeoutMilliseconds);
 		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getConfiguration(), "database", name, "initStatements")) {
 			String onOpen=JsonUtils.getString(e, "onOpen");

@@ -250,7 +250,7 @@ public class AppScope {
 				SubSystemStub s = stub.get();
 				if (s!=null) return s.<S>getSubSystem();
 			}
-		} catch (Exception ex) {
+		} catch (Throwable ex) {
 			return Utils.rethrowRuntimeException(ex);
 		}
 		throw new RuntimeException("Subsystem "+name+" is not registered or failed to initialize");
