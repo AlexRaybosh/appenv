@@ -1,20 +1,66 @@
 {
-	
-	"env" : {
-		"test3" : {
-			"task" : {
+	"env": {
+		"test3": {
+			"task": {
+				
+			}
+		},
+		"dev": {
+			"subsystems": {
+				"entries": {
+					"taskQueueClient": {
+						"class": "appenv.susbsystems.TaskQueueClientSubsystem",
+						"depends": [
+							"processMaintenance"
+						],
+						"insertConcurrency" : 10,
+						"insertQueueSize" : 65535,
+						"insertBulkSize" : 1024,
+						"insertRetryOnErrorCount" : 3,
+						"bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket, q.id  from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"timers": {
+							"tick": {
+								"startAfterSeconds": 1,
+								"timerIntervalSeconds": 0.3
+							},
+							"tock": {
+								"timerIntervalSeconds": 0.6
+							}
+						}
+					}
+				}
+			}
+		},		
+		"test4": {
+			"subsystems": {
+				"entries": {
+					"taskQueueBackend": {
+						"class": "appenv.susbsystems.TaskQueueBackendSubsystem",
+						"depends": [
+							"processMaintenance"
+						],
+						"timers": {
+							"tick": {
+								"startAfterSeconds": 1,
+								"timerIntervalSeconds": 0.3
+							},
+							"tock": {
+								"timerIntervalSeconds": 0.6
+							}
+						}
+					}
+				}
 			}
 		}
 	},
-
-	"defaults" : {
-		"task" : {
-			"typeCacheSeconds" : 10,
-			"typeCacheSize" : 256,
-			"database" : "core",
-			"type" : {
-				"dummy" : {
-					"ttlMs" : 30000
+	"defaults": {
+		"task": {
+			"typeCacheSeconds": 10,
+			"typeCacheSize": 256,
+			"database": "core",
+			"type": {
+				"dummy": {
+					"ttlMs": 30000
 				}
 			}
 		}

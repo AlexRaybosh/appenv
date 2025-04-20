@@ -7,14 +7,16 @@
 					"processMaintenance": null
 				}
 			}
-		},
+		},		
 		"test3": {
 			"subsystems": {
 				"initConcurrency": 2,
 				"entries": {
 					"test": {
 						"class": "testapp.TestSubSystem",
-						"depends" : ["processMaintenance"],
+						"depends": [
+							"processMaintenance"
+						],
 						"timers": {
 							"tick": {
 								"startAfterSeconds": 1,
@@ -28,25 +30,6 @@
 				}
 			}
 		},
-		"test4": {
-			"subsystems": {
-				"entries": {
-					"taskQueue": {
-						"class": "appenv.susbsystems.TaskQueueSubsystem",
-						"depends" : ["processMaintenance"],
-						"timers": {
-							"tick": {
-								"startAfterSeconds": 1,
-								"timerIntervalSeconds": 0.3
-							},
-							"tock": {
-								"timerIntervalSeconds": 0.6
-							}
-						}
-					}
-				}
-			}
-		},		
 		"dev": {
 			"subsystems": {
 				"entries": {
@@ -62,7 +45,7 @@
 				"processMaintenance": {
 					"class": "appenv.susbsystems.ProcessMaintenance",
 					"considerDeadAfterInactivitySeconds": 10.0,
-					"removeDeadAfterSeconds": 30.0,
+					"removeDeadAfterSeconds": 120.0,
 					"timers": {
 						"touch": {
 							"startAfterSeconds": 0,

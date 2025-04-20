@@ -1,6 +1,7 @@
 package appenv.task;
 
 import java.sql.SQLException;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +18,23 @@ import appenv.util.JsonUtils;
 import appenv.util.Utils;
 
 public class TaskType {
+	@Override
+	public int hashCode() {
+		return Objects.hash(getId());
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TaskType other = (TaskType) obj;
+		return Objects.equals(getId(), other.getId());
+	}
+
 	final Future<TaskType> future;
 	final String name;
 	final Integer id;

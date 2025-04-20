@@ -3,9 +3,9 @@ package appenv.susbsystems;
 import com.google.gson.JsonObject;
 
 import appenv.env.SubSystem;
-import appenv.task.TaskQueue;
+import appenv.task.TaskQueueBackend;
 
-public class TaskQueueSubsystem extends SubSystem implements TaskQueue {
+public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBackend {
 
 	@Override
 	public boolean init(boolean initial, JsonObject conf) throws Exception {

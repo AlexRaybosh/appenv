@@ -14,7 +14,8 @@ import com.google.gson.JsonObject;
 
 import appenv.db.DB;
 import appenv.etc.DictionaryWord;
-import appenv.task.TaskQueue;
+import appenv.task.TaskQueueBackend;
+import appenv.task.TaskQueueClient;
 import appenv.util.EncodingUtils;
 import appenv.util.Utils;
 
@@ -179,6 +180,7 @@ public class AppEnv {
 		return v.toString();
 	}
 
-	public static TaskQueue taskQueue() {return getAppScope().getTaskQueue();}	
+	public static TaskQueueBackend taskQueueBackend() {return getAppScope().getTaskQueueBackend();}
+	public static TaskQueueClient taskQueueClient() {return getAppScope().getTaskQueueClient();}
 	
 }

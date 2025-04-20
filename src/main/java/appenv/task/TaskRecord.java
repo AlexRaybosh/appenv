@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 
 import com.google.gson.JsonArray;
@@ -15,9 +16,24 @@ import appenv.util.JsonUtils;
 import appenv.util.JsonUtils.JsonType;
 
 public class TaskRecord {
+	@Override
+	public int hashCode() {
+		return Objects.hash(taskType, ticket);
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TaskRecord other = (TaskRecord) obj;
+		return Objects.equals(taskType, other.taskType) && Objects.equals(ticket, other.ticket);
+	}
 	final TaskType taskType;
 	final String ticket;
-	private long id;
+	private Long id;
 	private Long processAtMs;
 	private Long expireMs;
 	private byte[] payload;
@@ -30,15 +46,13 @@ public class TaskRecord {
 		this.fieldToNumber=fieldToNumber;
 	}
 	public TaskRecord(TaskType type, String ticket, byte[] payload, JsonObject props) {
-		this(type, ticket, props);
+		this(type, ticket==null?AppEnv.createUniqueKey():ticket, props);
 		this.payload=payload;
 	}
 	public TaskRecord(TaskType type, String ticket, JsonObject props) {
 		this(type,ticket);
 		for (Entry<String, JsonElement> e : props.entrySet()) {
 			String field=e.getKey();
-			JsonElement jv;
-
 			switch (JsonUtils.getType(e.getValue())) {
 			case NUMBER:
 				addPropNumber(field,JsonUtils.getLong(e.getValue()));
@@ -116,13 +130,15 @@ public class TaskRecord {
 	}
 	public long getExpireMs() {
 		if (expireMs!=null) return expireMs;
-		Long ttl=JsonUtils.getLong(AppEnv.configuration(), "task", "type", taskType.getName(), "ttlMs");
-		if (ttl==null) {
-			ttl=JsonUtils.getLong(taskType.getMeta(),"ttlMs");	
+		//Long ttl=JsonUtils.getLong(AppEnv.configuration(), "task", "type", taskType.getName(), "ttlMs");
+		Number esec=JsonUtils.getNumber(AppEnv.configuration(), "task", "type", taskType.getName(), "expiresAfterSeconds");
+		//removeDeadAfterMilliseconds= (long)(1000*.doubleValue());		
+		if (esec==null) {
+			esec=JsonUtils.getNumber(0, taskType.getMeta(),"expiresAfterSeconds");	
 		}
-		if (ttl!=null) return getProcessAtMs()+ttl;
+		expireMs=(long)(1000*esec.doubleValue());
+		return getProcessAtMs()+expireMs;
 		
-		throw new RuntimeException("Unknown ttlMs for "+taskType+", no ttlMs definition in environment configuration: task/type/"+taskType.getName()+", not in the task_type table meta field: "+taskType.getMeta());
 	}
 	public Map<String,Set<String>> getFieldToText() {return fieldToText;}
 	public Map<String,Set<Long>> getFieldToNumber() {return fieldToNumber;}
