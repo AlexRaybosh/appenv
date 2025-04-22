@@ -5,10 +5,10 @@ drop table if exists system_process_lsof;
 drop table if exists system_process;
 drop table if exists cluster_member;
 drop table if exists web_host;
-drop table if exists env_config;
-drop table if exists env;
-drop table if exists word;
-
+drop table if exists app_conf_entry;
+drop table if exists app_conf;
+drop table if exists word_dictionary;
+drop table if exists env_type;
 
 CREATE TABLE if not exists seq (
   name varchar(200) NOT NULL,
@@ -18,39 +18,48 @@ CREATE TABLE if not exists seq (
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 
-
-create table if not exists env (
+create table if not exists env_type (
 	id int not null,
+    name varchar(64) not null,
+    primary key (id),
+    unique index env_type_name_idx(name)
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+
+insert into env_type values (1, 'prod');
+insert into env_type values (2, 'beta');
+insert into env_type values (3, 'stg');
+insert into env_type values (4, 'alpha');
+insert into env_type values (5, 'dev');
+insert into env_type values (6, 'localdev');
+
+create table if not exists app_conf (
+	id int not null,
+	env_type_id int not null,
     name varchar(64) not null,
     last_ms bigint not null,
     primary key (id),
-    unique index env_name_idx(name)
+    unique index app_conf_name_idx(name, env_type_id),
+    constraint app_conf_env_type_fk foreign key (env_type_id) references env_type(id)
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-create table if not exists env_config (
-	env_id int not null,
+create table if not exists app_conf_entry (
+	app_conf_id int not null,
 	position int not null default 0,
     config varchar(64) not null,
     meta mediumtext not null,
     last_ms bigint not null,
-    primary key (env_id,position),
-    unique index env_name_idx(config),
-    constraint env_config_env_fk foreign key (env_id) references env(id)
+    primary key (app_conf_id,position),
+    unique index app_conf_name_idx(config),
+    constraint app_conf_entry_app_conf_fk foreign key (app_conf_id) references app_conf(id)
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 
 
-insert into env values (1, 'localdev1', unix_timestamp()*1000);
-insert into env values (2, 'localdev2', unix_timestamp()*1000);
-insert into env values (3, 'localdev3', unix_timestamp()*1000);
-insert into env values (4, 'localdev4', unix_timestamp()*1000);
-insert into env values (5, 'localdev5', unix_timestamp()*1000);
-insert into env values (100, 'dev', unix_timestamp()*1000);
-insert into env values (200, 'test', unix_timestamp()*1000);
-insert into env values (300, 'beta',  unix_timestamp()*1000);
-insert into env values (400, 'prod', unix_timestamp()*1000);
+insert into app_conf values (1, 6, 'testapp1', unix_timestamp()*1000);
+insert into app_conf values (2, 6, 'test-task-client', unix_timestamp()*1000);
 
-insert into env_config (env_id,position,config,meta,last_ms) values (1,0,'my_entry','{\"some value\":\"some override\"}',unix_timestamp()*1000);
+insert into app_conf_entry (app_conf_id,position,config,meta,last_ms) values (1,0,'my_entry','{\"some value\":\"some override\"}',unix_timestamp()*1000);
 
 
 
@@ -60,22 +69,22 @@ create table if not exists cluster_member (
     member_type varchar(64) not null,
     tcp_port int not null,
 	meta mediumtext not null,
-    env_id int not null default 0,
+    app_conf_id int not null default 0,
     last_ms bigint not null,
     primary key (id),
     unique index cluster_member_idx (hostname, tcp_port),
-    index cluster_member_env_idx (env_id),
-    constraint cluster_member_env_fk foreign key (env_id) references env(id) 
+    index cluster_member_app_conf_idx (app_conf_id),
+    constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id) 
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, env_id, last_ms) VALUES (1, 'z440.localdomain', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
+INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, app_conf_id, last_ms) VALUES (1, 'z440.localdomain', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
 
 
 
 create table if not exists system_process (
 	id bigint not null,
     is_active bool not null,
-    env_id int null,
+    app_conf_id int null,
     hostname varchar(300) not null,
     pid bigint null,
     cmd mediumtext null,
@@ -87,7 +96,7 @@ create table if not exists system_process (
     index process_dead_idx (is_active, dead_ms),
     index process_cluster_idx (cluster_member_id, is_active),
     constraint system_process_cluster_member_fk foreign key (cluster_member_id) references cluster_member(id),
-    constraint system_process_env_fk foreign key (env_id) references env(id)
+    constraint system_process_app_conf_fk foreign key (app_conf_id) references app_conf(id)
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 
