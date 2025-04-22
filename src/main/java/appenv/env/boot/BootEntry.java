@@ -19,9 +19,9 @@ public abstract class BootEntry {
 		return null;
 	}
 	
-	public abstract String getEnvName();
+	public abstract String getAppConfName();
 	public abstract Properties getProperties();
-	public abstract boolean eval(BootstrapEnv bootstrapEnv, JsonObject obj);
+	public abstract boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject obj);
 
 	
 

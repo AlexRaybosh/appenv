@@ -111,7 +111,7 @@ public class TaskType {
 	}
 
 	static int intConf(int fallBack, String... params) {
-		int ret=JsonUtils.getInteger(fallBack, AppEnv.configuration(), params);
+		int ret=JsonUtils.getInteger(fallBack, AppEnv.conf(), params);
 		return ret;
 	}
 
@@ -145,7 +145,7 @@ public class TaskType {
 
 	final static String dbPoolName=initDbPoolName();
 	private static String initDbPoolName() {
-		return JsonUtils.getString("core", AppEnv.configuration(), "task", "database");
+		return JsonUtils.getString("core", AppEnv.conf(), "task", "database");
 	}
 	
 	private static TaskType loadById(Integer id) throws SQLException, InterruptedException {

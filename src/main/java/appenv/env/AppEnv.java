@@ -20,21 +20,21 @@ import appenv.util.EncodingUtils;
 import appenv.util.Utils;
 
 public class AppEnv {
-	private static EnvOverride defaultEnvOverride=null;
+	private static AppConfOverride defaultAppConfOverride=null;
 	
 	
-	public static void presetEnvName(String env) {
-		if (defaultEnvOverride==null) defaultEnvOverride=new EnvOverride();
-		defaultEnvOverride.presetEnvName(env);
+	public static void presetAppConfName(String confName) {
+		if (defaultAppConfOverride==null) defaultAppConfOverride=new AppConfOverride();
+		defaultAppConfOverride.presetConfName(confName);
 	}
 	public static void presetBootstrapResource(String boot) {
-		if (defaultEnvOverride==null) defaultEnvOverride=new EnvOverride();
-		defaultEnvOverride.presetBootstrapResource(boot);
+		if (defaultAppConfOverride==null) defaultAppConfOverride=new AppConfOverride();
+		defaultAppConfOverride.presetBootstrapResource(boot);
 	}	
 
 	
 	private static class Holder {
-		final static AppScope appScope=AppScope.createNonDefaultAppScope(defaultEnvOverride);
+		final static AppScope appScope=AppScope.createNonDefaultAppScope(defaultAppConfOverride);
 	}
 	public static AppScope getAppScope() {
 		try {
@@ -66,18 +66,19 @@ public class AppEnv {
 	public static <S> S subSystem(String name) {return getAppScope().getSubSystem(name);}
 	public static Set<String> subSystemNames() {return getAppScope().getSubSystemNames();}
 	
-	public static Env env() {return getAppScope().getEnv();}
-	public static Integer envId() {return env().getId();}
-	public static String envName() {return getAppScope().getEnv().getName();}
+	public static AppConf appConf() {return getAppScope().getAppConf();}
+	public static Integer confId() {return appConf().getId();}
+	public static String confName() {return getAppScope().getAppConf().getName();}
+
+	public static Integer envTypeId() {return appConf().getEnvTypeId();}
+	public static String envTypeName() {return getAppScope().getAppConf().getEnvType();}
+	
 	
 	public static Properties bootstrapProperties() {return getAppScope().getBootstrapProperties();}
 	
 	public static Integer clusterMemberId() {return getAppScope().getClusterMemberId();}
 	public static Long newId(String name) throws SQLException, InterruptedException {return getAppScope().newId(name);}
-	public static JsonObject configuration() {return getAppScope().getConfiguration();}
-	public static JsonObject getConfiguration() {return configuration();}
-	
-	
+	public static JsonObject conf() {return getAppScope().getConfiguration();}
 	
 	public static DictionaryWord word(Number id) {return getAppScope().getDictionaryWord(id);}
 	public static DictionaryWord word(String word) {return getAppScope().getDictionaryWord(word);}
@@ -111,7 +112,7 @@ public class AppEnv {
 	
 	
 	
-	public static void reloadEnvironment() {getAppScope().reloadEnvironment();}	
+	public static void reloadConfiguration() {getAppScope().reloadConfiguration();}	
 	public static void reloadSubSystems() {getAppScope().reloadSubSystems();}
 	
 	

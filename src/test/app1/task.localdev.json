@@ -1,11 +1,11 @@
 {
-	"env": {
-		"test3": {
+	"appConf": {
+		"test-task-client": {
 			"task": {
 				
 			}
 		},
-		"dev": {
+		"test-task-client": {
 			"subsystems": {
 				"entries": {
 					"taskQueueClient": {

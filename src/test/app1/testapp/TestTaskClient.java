@@ -16,9 +16,9 @@ import appenv.util.JsonUtils;
 public class TestTaskClient {
 
 	public static void main(String[] strs) throws Exception {
-		AppEnv.presetEnvName("dev");
-		System.out.println(AppEnv.envName());
-		System.out.println(JsonUtils.prettyPrint(AppEnv.getConfiguration()));
+		AppEnv.presetAppConfName("test-task-client");
+		System.out.println(AppEnv.confName());
+		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
 		
 		TaskQueueClient taskQueueClient = AppEnv.taskQueueClient();
 
@@ -30,7 +30,8 @@ public class TestTaskClient {
 		long s=System.currentTimeMillis();
 		int N=1000000;
 		for (int i=0; i< N; ++i) {
-			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}");
+			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}");
+			JsonObject props=null;
 			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
 			submits.add(f);
 		}

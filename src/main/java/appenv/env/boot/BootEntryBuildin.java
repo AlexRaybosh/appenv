@@ -11,7 +11,7 @@ import appenv.util.JsonUtils;
 public class BootEntryBuildin extends BootEntry {
 	private Properties properties;
 	@Override
-	public boolean eval(BootstrapEnv bootstrapEnv, JsonObject conf) {
+	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		JsonObject obj=JsonUtils.getJsonObject(conf, "properties");
 		if (obj==null) return false;
 		properties=new Properties();
@@ -25,8 +25,8 @@ public class BootEntryBuildin extends BootEntry {
 	}
 
 	@Override
-	public String getEnvName() {
-		return properties==null?null:properties.getProperty("env");
+	public String getAppConfName() {
+		return properties==null?null:properties.getProperty("appConf");
 	}
 	@Override
 	public Properties getProperties() {

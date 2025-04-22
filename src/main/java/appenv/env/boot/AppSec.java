@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.commons.codec.binary.Base64;
 
 import appenv.env.AppScope;
-import appenv.env.Env;
+import appenv.env.AppConf;
 import appenv.util.Utils;
 
 public class AppSec {
@@ -133,7 +133,7 @@ public class AppSec {
 							appScope.logerr("RSA decoder failed to initialize", ee);
 						}
 					} else {
-						BootstrapEnv.logerr("RSA decoder failed to initialize", e);
+						BootstrapAppConf.logerr("RSA decoder failed to initialize", e);
 					}
 				}
 			}
@@ -146,16 +146,16 @@ public class AppSec {
 				} catch (Exception e) {
 					if (Utils.initBouncyCastle()) {
 						try {
-							BootstrapEnv.logerr("RSA BC encoder failed to initialize, fallback to BC: "+e.getMessage());
+							BootstrapAppConf.logerr("RSA BC encoder failed to initialize, fallback to BC: "+e.getMessage());
 							rsaPrivateEncoder=Cipher.getInstance("RSA","BC");
 							rsaPrivateEncoder.init(Cipher.ENCRYPT_MODE, rsaPrivateKey);
 							sha256WithRSASignature=Signature.getInstance("SHA256WithRSA","BC");
 							sha256WithRSASignature.initSign(rsaPrivateKey);							
 						} catch (Exception ee) {
-							BootstrapEnv.logerr("RSA encoder failed to initialize:"+ e.getMessage());
+							BootstrapAppConf.logerr("RSA encoder failed to initialize:"+ e.getMessage());
 						}
 					} else {
-						BootstrapEnv.logerr("RSA encoder failed to initialize:"+ e.getMessage());
+						BootstrapAppConf.logerr("RSA encoder failed to initialize:"+ e.getMessage());
 					}
 				}
 			}
@@ -170,7 +170,7 @@ public class AppSec {
     }
     
     
-	public AppSec(AppScope appScope, Properties properties, Env env) {
+	public AppSec(AppScope appScope, Properties properties, AppConf appConf) {
 		this.appScope=appScope;
 		String aesIvBase64 = properties.getProperty("aesIvBase64");
 		String aesKeyBase64 = properties.getProperty("aesKeyBase64");
@@ -188,11 +188,11 @@ public class AppSec {
 				if (Utils.initBouncyCastle()) {
 					kf=KeyFactory.getInstance("RSA", "BC");	
 				} else {
-					BootstrapEnv.logerr("Bouncy Castle is not available, key parsing will probably fail");
+					BootstrapAppConf.logerr("Bouncy Castle is not available, key parsing will probably fail");
 					kf=KeyFactory.getInstance("RSA");
 				}
 			} catch (Exception e) {				
-				BootstrapEnv.logerr("Failed to initialize RSA: "+ e.getMessage());
+				BootstrapAppConf.logerr("Failed to initialize RSA: "+ e.getMessage());
 				Utils.rethrowRuntimeException(e);
 			}
 
@@ -205,7 +205,7 @@ public class AppSec {
 					if (kf!=null) 
 						rsaPrivateKey = kf.generatePrivate(spec);
 				} catch (InvalidKeySpecException e) {
-					BootstrapEnv.logerr("Failed to initialize RSA private key: "+ e.getMessage());
+					BootstrapAppConf.logerr("Failed to initialize RSA private key: "+ e.getMessage());
 					Utils.rethrowRuntimeException(e);
 				}
 			}
@@ -215,7 +215,7 @@ public class AppSec {
 				try {
 					if (kf!=null) rsaPublicKey = kf.generatePublic(spec);
 				} catch (InvalidKeySpecException e) {
-					BootstrapEnv.logerr("Failed to initialize RSA public key: "+ e.getMessage());
+					BootstrapAppConf.logerr("Failed to initialize RSA public key: "+ e.getMessage());
 				}
 			}
 			
@@ -225,7 +225,7 @@ public class AppSec {
 					RSAPublicKeySpec pubSpec=new RSAPublicKeySpec(crtKeySpec.getModulus(), crtKeySpec.getPublicExponent());
 					rsaPublicKey=kf.generatePublic(pubSpec);
 				} catch (InvalidKeySpecException e) {
-					BootstrapEnv.logerr("Failed to convert RSA private to public key: "+ e.getMessage());
+					BootstrapAppConf.logerr("Failed to convert RSA private to public key: "+ e.getMessage());
 				} 
 			}
 		}

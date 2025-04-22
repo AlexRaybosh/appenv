@@ -139,18 +139,18 @@ public class InitSubSystems {
 		for (JsonElement el : JsonUtils.getJsonArrayIterable(conf, "depends")) {
 			String depName=JsonUtils.getString(el);
 			if (Utils.isEmpty(depName)) {
-				BootstrapEnv.logerr("Ignoring invalid dependency \""+depName+"\" for subsystem \""+name+ "\" : "+el);
+				BootstrapAppConf.logerr("Ignoring invalid dependency \""+depName+"\" for subsystem \""+name+ "\" : "+el);
 				continue;
 			}
 			JsonElement depEntry = entries.get(depName);
 			if (depEntry==null) {
-				BootstrapEnv.logerr("Ignoring non-existent dependency \""+depName+"\" for subsystem \""+name+ "\" : "+conf);
+				BootstrapAppConf.logerr("Ignoring non-existent dependency \""+depName+"\" for subsystem \""+name+ "\" : "+conf);
 				continue;
 			}
 			if (depEntry.isJsonNull()) 
 				continue;
 			if (!depEntry.isJsonObject()) {
-				BootstrapEnv.logerr("Ignoring invalid dependency \""+depName+"\" : \""+depEntry+"\" for subsystem \""+name+ "\" : "+conf);
+				BootstrapAppConf.logerr("Ignoring invalid dependency \""+depName+"\" : \""+depEntry+"\" for subsystem \""+name+ "\" : "+conf);
 				continue;
 			}
 			
@@ -162,7 +162,7 @@ public class InitSubSystems {
 			}
 			if (pathTraversed.contains(depName)) {
 				String msg="Loop dependency: \""+depName+"\" detected for subsystem \""+name+ "\"; path: "+pathTraversed;
-				BootstrapEnv.logerr(msg);
+				BootstrapAppConf.logerr(msg);
 				throw new RuntimeException(msg);
 			}
 			pathTraversed.add(depName);
@@ -205,13 +205,13 @@ public class InitSubSystems {
 		
 		String clazz=JsonUtils.getString(conf, "class");
 		if (Utils.isEmpty(clazz)) {
-			//BootstrapEnv.logerr("Ignore subsystem "+name+ ", no valid class defined in : "+conf);
+			//BootstrapAppConf.logerr("Ignore subsystem "+name+ ", no valid class defined in : "+conf);
 			return null;
 		}
 		Object s=Class.forName(clazz).getConstructor().newInstance();
 		if (!(s instanceof SubSystem)) {
 			String msg="class: "+clazz+" is not a SubSystem, subsystem "+name+ " : "+conf;
-			BootstrapEnv.logerr(msg);
+			BootstrapAppConf.logerr(msg);
 			throw new RuntimeException(msg);
 		}
 		SubSystem sub = (SubSystem)s;

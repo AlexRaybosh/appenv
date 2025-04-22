@@ -13,7 +13,7 @@ import com.google.gson.JsonObject;
 
 import appenv.db.DB;
 import appenv.env.AppScope;
-import appenv.env.Env;
+import appenv.env.AppConf;
 import appenv.util.JsonUtils;
 import appenv.util.Legacy;
 import appenv.util.Utils;
@@ -26,8 +26,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class BootstrapEnv {
-	String envName;
+public class BootstrapAppConf {
+	String appConfName;
+	String envType;
 	Properties properties;
 	String shell;
 	boolean abortOnError=false;
@@ -36,7 +37,7 @@ public class BootstrapEnv {
 	private String dbuser;
 	private String dbpassword;
 	DB db;
-	Env env;
+	AppConf appConf;
 	Future<AppSec> appSecFuture;
 	boolean disableDB=false;
 	private boolean bootstrapIsFile;
@@ -57,25 +58,10 @@ public class BootstrapEnv {
 				continue;
 			}
 			if (allConfigs.containsKey(inc)) continue;
-			try {
-				String incName=lookupDir==null?inc:(lookupDir+"/"+inc);
-				JsonObject incConfig=null;
-				if (bootstrapIsFile) {
-					incConfig=readBuildinJsonConfigFile(incName+".json");
-					if (incConfig==null) incConfig=readBuildinJsonConfigFile(incName);//inc+".json");					
-				} else {
-					incConfig=readBuildinJsonConfig(incName+".json");//inc+".json");
-					if (incConfig==null) incConfig=readBuildinJsonConfig(incName);
-				}
-				
-				if (incConfig!=null) add(inc, allConfigs, incConfig);
-				else {
-					logerr("Configuration "+name+" contains invalid include entry "+entry+", skipping it");	
-				}
-			} catch (Exception e) {
-				String err="Configuration "+name+" contains invalid include entry "+entry+", failed to read it: "+e.getMessage();
-				logerr(err);
-				throw new RuntimeException(err);
+			boolean a1=addIncluded(name, allConfigs, entry, inc);
+			boolean a2=addIncluded(name, allConfigs, entry, inc+"."+envType);
+			if (!a1 && !a2) {
+				throw new RuntimeException("Configuration "+name+" contains invalid include entry "+entry+", skipping it");				
 			}
 		}
 /*		
@@ -85,6 +71,32 @@ public class BootstrapEnv {
 		System.out.println("-----------");
 */		
 		conf.remove("include");
+	}
+
+	private boolean addIncluded(String name, Map<String, JsonObject> allConfigs, JsonElement entry, String inc) {
+		try {
+			String incName=lookupDir==null?inc:(lookupDir+"/"+inc);
+			JsonObject incConfig=null;
+			if (bootstrapIsFile) {
+				incConfig=readBuildinJsonConfigFile(incName+".json");
+				if (incConfig==null) incConfig=readBuildinJsonConfigFile(incName);//inc+".json");					
+			} else {
+				incConfig=readBuildinJsonConfig(incName+".json");//inc+".json");
+				if (incConfig==null) incConfig=readBuildinJsonConfig(incName);
+			}
+			
+			if (incConfig!=null) {
+				add(inc, allConfigs, incConfig);
+				return true;
+			}
+			else {
+				return false;
+			}
+		} catch (Exception e) {
+			String err="Configuration "+name+" contains invalid include entry "+entry+", failed to read it: "+e.getMessage();
+			logerr(err);
+			throw new RuntimeException(err);
+		}
 	}
 
 
@@ -122,19 +134,17 @@ public class BootstrapEnv {
 		if (dirEnd>0) {
 			lookupDir=bootstrap.substring(0, dirEnd);
 		}
-		Map<String,JsonObject> allConfigs=new LinkedHashMap<>();
-		add("bootstrap", allConfigs, buildInConfig);
-/*		for (Entry<String, JsonObject> e : allConfigs.entrySet()) {
-			System.out.println(e.getKey()+JsonUtils.prettyPrint(e.getValue())+"\n\n");
-		}
-*/		
-		JsonObject[] arr=allConfigs.values().<JsonObject>toArray(new JsonObject[allConfigs.size()]);
-		buildInConfig=JsonUtils.combine(arr);
 
 		shell = JsonUtils.getString(buildInConfig, "bootstrap", "shell");
 		if (Utils.isEmpty(shell)) shell="/bin/bash";
 
-		String overrideEnvFromEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "overrideEnvFromEnvironmentVariable");
+		String overrideConfNameFromEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "overrideConfNameFromEnvironmentVariable");
+		String overrideEnvTypeFromEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "overrideEnvTypeFromEnvironmentVariable");
+		if (!Utils.isEmpty(overrideEnvTypeFromEnvironmentVariable)) {
+			String v=System.getenv(overrideEnvTypeFromEnvironmentVariable);
+			if (!Utils.isEmpty(v)) envType=v;
+		}
+		
 		String abortOnErrorIfShellEval=JsonUtils.getString(buildInConfig, "bootstrap", "abortOnErrorIfShellEval");
 		logErrors=JsonUtils.getBool(buildInConfig, "bootstrap","logErrors");
 		abortOnError=JsonUtils.getBool(buildInConfig, "bootstrap","abortOnError");
@@ -149,36 +159,51 @@ public class BootstrapEnv {
 			entry=BootEntry.create(bobj);
 			if (entry==null) continue;
 			try {
-				boolean eval=entry.eval(BootstrapEnv.this, JsonUtils.getJsonObject(bobj));
-				if (eval) break;
+				boolean eval=entry.eval(BootstrapAppConf.this, JsonUtils.getJsonObject(bobj));
+				if (eval) 
+					break;
 			} catch (Exception e) {
 				if (logErrors) logerr(e.getMessage());
 				if (abortOnError) throw e;
 			}
 		}
 		if (entry!=null) {
-			envName=entry.getEnvName();
+			appConfName=entry.getAppConfName();
 			properties=entry.getProperties();
 		}
+		if (Utils.isEmpty(envType)) {
+			envType=properties.getProperty("envType");
+		}
+		if (Utils.isEmpty(envType)) envType="localdev";
 		
-		if (!Utils.isEmpty(appScope.getPresetEnvName())) {
-			envName=appScope.getPresetEnvName();
+		if (!Utils.isEmpty(appScope.getPresetConfName())) {
+			appConfName=appScope.getPresetConfName();
 		} else {
-			if (!Utils.isEmpty(overrideEnvFromEnvironmentVariable)) {
-				String v=System.getenv(overrideEnvFromEnvironmentVariable);
-				if (!Utils.isEmpty(v)) envName=v;
+			if (!Utils.isEmpty(overrideConfNameFromEnvironmentVariable)) {
+				String v=System.getenv(overrideConfNameFromEnvironmentVariable);
+				if (!Utils.isEmpty(v)) appConfName=v;
 			}
-			if (envName==null) envName="undefined";		
+			if (appConfName==null) appConfName="undefined";		
 		}
 
 		if (buildInConfig==null) {
 			throw new RuntimeException("./boostrap.json resource/file on classpath or cwd is missing or unreasonable empty");
 		}
 		if (properties==null) properties=new Properties();
+
+		Map<String,JsonObject> allConfigs=new LinkedHashMap<>();
+		//allConfigs.put("bootstrap", buildInConfig);
+		add("bootstrap", allConfigs, buildInConfig);
+/*		for (Entry<String, JsonObject> e : allConfigs.entrySet()) {
+			System.out.println(e.getKey()+JsonUtils.prettyPrint(e.getValue())+"\n\n");
+		}
+*/		
+		JsonObject[] arr=allConfigs.values().<JsonObject>toArray(new JsonObject[allConfigs.size()]);
+		buildInConfig=JsonUtils.combine(arr);
 		
-		JsonObject myConf = JsonUtils.getJsonObject(buildInConfig, "env", envName);
+		JsonObject myConf = JsonUtils.getJsonObject(buildInConfig, "appConf", appConfName);
 		JsonObject defConf= JsonUtils.getJsonObject(buildInConfig, "defaults");
-		JsonObject envConf=JsonUtils.combine(new JsonObject(), defConf, myConf);
+		JsonObject realConf=JsonUtils.combine(new JsonObject(), defConf, myConf);
 		
 		dburl=(String)properties.get("dburl");
 		dbuser=(String)properties.get("dbuser");
@@ -195,42 +220,43 @@ public class BootstrapEnv {
 			}
 		}
 		
-		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(envConf, "database", "core")!=null ) {
+		if (!Utils.isEmpty(dburl) && JsonUtils.getJsonObject(realConf, "database", "core")!=null ) {
 			db=DB.create(dburl, dbuser, dbpassword);
 		}
-		env=initEnv(db,envName,envConf);//Env.init(db, envName , envConf); 
-		if (db!=null && JsonUtils.getJsonObject(env.getConfiguration(), "database", "core")==null) {
+		appConf=initAppConf(db,realConf);//AppConf.init(db, appConfName , envConf); 
+		if (db!=null && JsonUtils.getJsonObject(appConf.getConfiguration(), "database", "core")==null) {
 			db.close();
 			db=null;
 		}
 		if (db!=null) {
-			db=reinit(db,env.getConfiguration(), "core", dburl,  dbuser, dbpassword);
+			db=reinit(db,appConf.getConfiguration(), "core", dburl,  dbuser, dbpassword);
 		}
 
 		appSecFuture=AppScope.getExecutorService().submit(new Callable<AppSec>() {
 			public AppSec call() throws Exception {
-				return  new AppSec(appScope, properties, env);
+				return  new AppSec(appScope, properties, appConf);
 			}
 		});
 		
 	}
 
 
-	private Env initEnv(DB db, String envName, JsonObject envConf) throws SQLException, InterruptedException {
-		Integer id=null;
+	private AppConf initAppConf(DB db, JsonObject conf) throws SQLException, InterruptedException {
+		Integer id=null, envTypeId=null;
 		if (db!=null) {
-			id=Utils.toInteger(db.selectSingle("select id from env e where e.name=?",false,envName));
-			if (id!=null) for (Object str : db.selectFirstColumn("select meta from env_config where env_id=? order by position",false,id)) {
+			envTypeId=Utils.toInteger(db.selectSingle("select id from env_type where name=?",false,envType));
+			id=Utils.toInteger(db.selectSingle("select id from app_conf a where a.name=? and a.env_type_id=?",false,appConfName,envTypeId));
+			if (id!=null) for (Object str : db.selectFirstColumn("select meta from app_conf_entry where app_conf_id=? order by position",false,id)) {
 				String cmetaStr=Utils.toString(str);
 				if (!Utils.isEmpty(cmetaStr)) {
 					JsonObject cmeta=JsonUtils.parseJsonObject(cmetaStr);
 					if (cmeta!=null) {
-						envConf=JsonUtils.combine(envConf,cmeta);
+						conf=JsonUtils.combine(conf,cmeta);
 					}
 				}
 			}				
 		}
-		return new Env(id, envName, envConf);
+		return new AppConf(id,appConfName,envTypeId, envType, conf);
 	}
 
 
@@ -325,18 +351,18 @@ public class BootstrapEnv {
 		return properties;
 	}
 
-	public static BootstrapEnv bootstrap(AppScope appScope) throws Exception {
-		BootstrapEnv bootstrapEnv=new BootstrapEnv();
-		bootstrapEnv.init(appScope);
-		return bootstrapEnv;
+	public static BootstrapAppConf bootstrap(AppScope appScope) throws Exception {
+		BootstrapAppConf bootstrapAppConf=new BootstrapAppConf();
+		bootstrapAppConf.init(appScope);
+		return bootstrapAppConf;
 	}
 	
 	public final DB getDB() {
 		return db;
 	}
 
-	public final Env getEnv() {
-		return env;
+	public final AppConf getAppConf() {
+		return appConf;
 	}
 
 

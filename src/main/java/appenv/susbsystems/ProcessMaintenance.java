@@ -16,7 +16,7 @@ import appenv.util.Utils;
 public class ProcessMaintenance extends SubSystem {
 
 	final static String INSERT_SQL="INSERT INTO system_process ("
-			+ "id, is_active, env_id, "
+			+ "id, is_active, app_conf_id, "
 			+ "hostname, pid, cmd, "
 			+ "cluster_member_id, start_ms, ping_ms, "
 			+ "dead_ms) "
@@ -68,7 +68,7 @@ public class ProcessMaintenance extends SubSystem {
 				long now=getAppScope().getTime();
 				long dead=getDead(now);
 				cw.update(INSERT_SQL, false, 
-						processId, 1, appScope.getEnvId(), 
+						processId, 1, appScope.getAppConfId(), 
 						hostName, pid, cmdLine, 
 						clusterMemberId, start==null?now:start, now, dead);
 				return processId;

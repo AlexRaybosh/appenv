@@ -14,7 +14,7 @@ import com.google.gson.JsonObject;
 import appenv.db.DB;
 import appenv.db.DBID;
 import appenv.env.AppScope;
-import appenv.env.Env;
+import appenv.env.AppConf;
 import appenv.etc.DictionaryBase;
 import appenv.etc.DictionaryWord;
 import appenv.util.DummyErrorFuture;
@@ -30,7 +30,7 @@ public class Init {
 	//ClusterMember clusterMember;
 	final DB coreDB;
 	final Map<String,DB> sideDBs=new HashMap<>();
-	final Env env;
+	final AppConf appConf;
 	final boolean hasDB;
 	final AppScope appScope;
 	final Properties bootstrapProperties;
@@ -47,7 +47,7 @@ public class Init {
 		try {
 			appSecFuture=new DummyFuture<AppSec>(appSecFuture.get());
 		} catch (Exception e) {
-			BootstrapEnv.logerr("AppScope security initialization failed: ",e);
+			BootstrapAppConf.logerr("AppScope security initialization failed: ",e);
 			appSecFuture=new DummyErrorFuture<>(e);
 		}
 		
@@ -55,9 +55,9 @@ public class Init {
 	
 	public Init(AppScope appScope) throws Exception {
 		this.appScope=appScope;
-		BootstrapEnv bs=BootstrapEnv.bootstrap(appScope);
+		BootstrapAppConf bs=BootstrapAppConf.bootstrap(appScope);
 		hasDB=bs.getDB()!=null;
-		env=bs.getEnv();
+		appConf=bs.getAppConf();
 		appSecFuture=bs.getAppSecFuture();
 		if (hasDB) {
 			coreDB=bs.getDB();
@@ -67,7 +67,7 @@ public class Init {
 			dbid=null;
 			coreDB=null;
 		}
-		JsonObject allDBsConf = JsonUtils.getJsonObject(env.getConfiguration(), "database");
+		JsonObject allDBsConf = JsonUtils.getJsonObject(appConf.getConfiguration(), "database");
 
 		if (null!=allDBsConf && !bs.isDBDisabled())for (Entry<String, JsonElement> e : allDBsConf.entrySet()) {
 			String dbName=e.getKey();
@@ -76,7 +76,7 @@ public class Init {
 			if (dbConf==null) continue;
 			String dburl=JsonUtils.getString(dbConf,"properties", "dburl");
 			if (dburl==null) {
-				BootstrapEnv.logerr("Skipping DB "+dbName+", no dburl available");
+				BootstrapAppConf.logerr("Skipping DB "+dbName+", no dburl available");
 				continue;
 			}
 			String dbuser=JsonUtils.getString(dbConf,"properties", "dbuser");
@@ -87,7 +87,7 @@ public class Init {
 				dbpassword=bs.getProperties().getProperty(dbpasswordBootstrapPropertyName);
 			}
 			DB db=DB.create(dburl, dbuser, dbpassword);
-			db=BootstrapEnv.reinit(db, env.getConfiguration(), dbName, dburl, dbuser, dbpassword);
+			db=BootstrapAppConf.reinit(db, appConf.getConfiguration(), dbName, dburl, dbuser, dbpassword);
 			initDB(dbName, db);
 			sideDBs.put(dbName, db);
 		}
@@ -101,29 +101,29 @@ public class Init {
 	}
 
 	private void initDB(String name, DB db) {
-		int maxCachedPreparedStatements=JsonUtils.getInteger(50, env.getConfiguration(),"database", name, "maxCachedPreparedStatements");
+		int maxCachedPreparedStatements=JsonUtils.getInteger(50, appConf.getConfiguration(),"database", name, "maxCachedPreparedStatements");
 		db.setMaxCachedPreparedStatements(maxCachedPreparedStatements);
-		int maxConnections=JsonUtils.getInteger(5, env.getConfiguration(), "database", name, "maxConnections");
+		int maxConnections=JsonUtils.getInteger(5, appConf.getConfiguration(), "database", name, "maxConnections");
 		db.setMaxConnections(maxConnections);
 		
-		long retryTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(10, env.getConfiguration(),"database", name,  "retryTimeoutSeconds").doubleValue());
+		long retryTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(10, appConf.getConfiguration(),"database", name,  "retryTimeoutSeconds").doubleValue());
 		
 		db.setRetryTimeout(TimeUnit.MILLISECONDS, retryTimeoutMilliseconds);
-		int transactionIsolation=JsonUtils.getInteger(Connection.TRANSACTION_READ_COMMITTED, env.getConfiguration(), "database", name, "transactionIsolation");
+		int transactionIsolation=JsonUtils.getInteger(Connection.TRANSACTION_READ_COMMITTED, appConf.getConfiguration(), "database", name, "transactionIsolation");
 		db.setTransactionIsolation(transactionIsolation);
 		
-		int batchSize=JsonUtils.getInteger(128, env.getConfiguration(), "database", name, "batchSize");
+		int batchSize=JsonUtils.getInteger(128, appConf.getConfiguration(), "database", name, "batchSize");
 		db.setBatchSize(batchSize);
 		
-		long overborrowPenaltyTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(0.1, env.getConfiguration(),"database", name,  "overborrowPenaltySeconds").doubleValue());
+		long overborrowPenaltyTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(0.1, appConf.getConfiguration(),"database", name,  "overborrowPenaltySeconds").doubleValue());
 		db.setOverborrowPenaltyTimeout(TimeUnit.MILLISECONDS, overborrowPenaltyTimeoutMilliseconds);
-		for (JsonElement e : JsonUtils.getJsonArrayIterable(env.getConfiguration(), "database", name, "initStatements")) {
+		for (JsonElement e : JsonUtils.getJsonArrayIterable(appConf.getConfiguration(), "database", name, "initStatements")) {
 			String onOpen=JsonUtils.getString(e, "onOpen");
 			String onClose=JsonUtils.getString(e, "onClose");
 			boolean autoCommit=JsonUtils.getBool(e, "autoCommit");
 			db.addInitSqlWithCleanup(autoCommit, onOpen, onClose);
 		}
-		boolean allowOverborrow=JsonUtils.getBoolean(true,env.getConfiguration(), "database", name, "allowOverborrow");
+		boolean allowOverborrow=JsonUtils.getBoolean(true,appConf.getConfiguration(), "database", name, "allowOverborrow");
 		db.allowOverborrow(allowOverborrow);
 	}
 
@@ -152,8 +152,8 @@ public class Init {
 			if (db!=null) db.close();
 		}
 	}
-	public final Env getEnv() {
-		return env;
+	public final AppConf getAppConf() {
+		return appConf;
 	}
 	public final DBID getDBID() {
 		return dbid;

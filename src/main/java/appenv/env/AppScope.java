@@ -20,7 +20,7 @@ import com.google.gson.JsonObject;
 
 import appenv.async.AsyncEngine;
 import appenv.db.DB;
-import appenv.env.boot.BootstrapEnv;
+import appenv.env.boot.BootstrapAppConf;
 import appenv.env.boot.Init;
 import appenv.env.boot.InitSubSystems;
 import appenv.env.boot.SubSystemStub;
@@ -34,15 +34,15 @@ import appenv.util.DummyFuture;
 import appenv.util.Utils;
 
 public class AppScope {
-	private EnvOverride envOverride=null;
+	private AppConfOverride appConfOverride=null;
 
-	public EnvOverride getEnvOverride() {return envOverride;}
+	public AppConfOverride getAppConfOverride() {return appConfOverride;}
 	
-	public String getPresetEnvName() {
-		return envOverride==null?null:envOverride.getPresetEnvName();
+	public String getPresetConfName() {
+		return appConfOverride==null?null:appConfOverride.getPresetConfName();
 	}
 	public String getPresetBootstrapResource() {
-		return envOverride==null?null:envOverride.getPresetBootstrapResource();
+		return appConfOverride==null?null:appConfOverride.getPresetBootstrapResource();
 	}
 	
 	
@@ -54,8 +54,8 @@ public class AppScope {
 	public static AppScope createNonDefaultAppScope() {
 		return createNonDefaultAppScope(null);
 	}
-	public static AppScope createNonDefaultAppScope(EnvOverride envOverride) {
-		AppScope appScope=new AppScope(envOverride);
+	public static AppScope createNonDefaultAppScope(AppConfOverride appConfOverride) {
+		AppScope appScope=new AppScope(appConfOverride);
 		appScope.init();
 		return appScope;
 	}
@@ -74,8 +74,8 @@ public class AppScope {
 	
 	public static ScheduledExecutorService getScheduledExecutorService() {return scheduledExecutorService;}
 	public static ExecutorService getExecutorService() {return AsyncEngine.getEngineExecutorService();}
-	private AppScope(EnvOverride envOverride) {
-		this.envOverride=envOverride;
+	private AppScope(AppConfOverride appConfOverride) {
+		this.appConfOverride=appConfOverride;
 
 
 	}
@@ -105,7 +105,7 @@ public class AppScope {
 					myInit.derefAppSec();
 					initFuture=new DummyFuture<>(myInit);
 				} catch (Exception e) {
-					BootstrapEnv.logerr("AppScope initialization failed: ",e);
+					BootstrapAppConf.logerr("AppScope initialization failed: ",e);
 					initFuture=new DummyErrorFuture<>(e);
 				}
 				
@@ -116,7 +116,7 @@ public class AppScope {
 		}
 	}
 	
-	public final void reloadEnvironment() {
+	public final void reloadConfiguration() {
 		Future<Init> newInitFuture = getExecutorService().submit(new Callable<Init>() {
 			public Init call() throws Exception {
 				return new Init(AppScope.this);
@@ -129,7 +129,7 @@ public class AppScope {
 			initFuture=new DummyFuture<>(newInit);
 			oldInit.destroy();
 		} catch (Exception e) {
-			logerr("AppScope reload environment failed: ",Utils.extraceCause(e));
+			logerr("AppScope reload configuration failed: ",Utils.extraceCause(e));
 			Utils.rethrowRuntimeException(e);
 		}
 	}
@@ -264,8 +264,8 @@ public class AppScope {
 	
 	
 	
-	public final Env getEnv() {return getInit().getEnv();}
-	public final Integer getEnvId() {return getEnv().getId();}
+	public final AppConf getAppConf() {return getInit().getAppConf();}
+	public final Integer getAppConfId() {return getAppConf().getId();}
 	
 	
 	public final Integer getClusterMemberId() {
@@ -337,7 +337,7 @@ public class AppScope {
 	public final boolean getWordCached(String base, String word) {return getInit().wordCached(base, word);}
 	public final boolean getWordCached(String base, Number id) {return getInit().wordCached(base, id);}
 
-	public final JsonObject getConfiguration() {return getEnv().getConfiguration();}
+	public final JsonObject getConfiguration() {return getAppConf().getConfiguration();}
 
 	public BasicLogger getLogger() {return logger;}
 	

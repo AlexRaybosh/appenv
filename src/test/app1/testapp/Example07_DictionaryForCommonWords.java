@@ -42,7 +42,7 @@ public class Example07_DictionaryForCommonWords {
 		long committedTime = System.currentTimeMillis();
 		System.out.println("Done committing "+MAX+" commonly used strings in "+(committedTime-addedFirstTime)+" ms.");
 		
-		AppEnv.reloadEnvironment();
+		AppEnv.reloadConfiguration();
 		
 		words.clear();
 		for (int i=1;i<=MAX; ++i) {

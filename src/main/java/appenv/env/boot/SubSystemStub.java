@@ -76,7 +76,7 @@ public class SubSystemStub {
 			long start=(long)(1000*JsonUtils.getNumber(0, perConf,  "startAfterSeconds").doubleValue());
 			Number interval=JsonUtils.getNumber(perConf,  "timerIntervalSeconds");
 			if (interval==null || (long)(1000*interval.doubleValue())<=0) {
-				BootstrapEnv.logerr("Ignore periodical "+perName+" in "+conf+", no valid 'timerIntervalSeconds' property defined in: "+perConf);
+				BootstrapAppConf.logerr("Ignore periodical "+perName+" in "+conf+", no valid 'timerIntervalSeconds' property defined in: "+perConf);
 				continue;
 			}
 			

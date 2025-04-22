@@ -36,7 +36,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 	public boolean init(boolean initial, JsonObject c) throws Exception {
 		this.conf=c;
 		System.out.println(JsonUtils.prettyPrint(conf));
-		if (AppEnv.envId()==null) throw new RuntimeException("Environment '"+AppEnv.envName()+"' is not registered in the DB");
+		if (AppEnv.envTypeId()==null) throw new RuntimeException("Environment "+AppEnv.envTypeName()+"' is not registered in the DB");
 		asyncEngine=AsyncEngine.create();
 		lookupCreateService=asyncEngine.register("lookupCreateByName", new ServiceBackend<Long>() {	
 			public void process(List<Request<Long>> bulk) throws Exception {insert(bulk);}
@@ -149,7 +149,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 					task.getId(), 
 					task.getTaskTypeId(), 
 					TaskState.INIT.getStateId(),
-					AppEnv.envId(),
+					AppEnv.envTypeId(),
 					task.getTicket(),
 					task.getProcessAtMs(),
 					task.getPayload(),
@@ -180,7 +180,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 
 		}
 		if (!taskRows.isEmpty()) {
-			String insertTaskSql="insert into task_queue (id,task_type_id,task_state_id,env_id,"
+			String insertTaskSql="insert into task_queue (id,task_type_id,task_state_id,env_type_id,"
 					+ "ticket,process_at_ms,payload,insert_ms,"
 					+ "expire_ms, error_count, last_ms) values ("
 					+ "?,?,?,?, ?,?,?,?, ?,?,?)";

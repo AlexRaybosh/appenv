@@ -1,7 +1,7 @@
 {
 	
-	"env" : {
-		"localdev2" : {
+	"appConf" : {
+		"teastapp3" : {
 			"database" : {
 				"core" : {
 					"urlParams" : {

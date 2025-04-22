@@ -8,9 +8,10 @@ import appenv.util.JsonUtils;
 public class TestApp1 {
 
 	public static void main(String[] strs) throws Exception {
-		AppEnv.presetEnvName("test3");
-		System.out.println(AppEnv.envName());
-		System.out.println(JsonUtils.prettyPrint(AppEnv.getConfiguration()));
+		AppEnv.presetAppConfName("testapp1");
+		System.out.println(AppEnv.envTypeName() + " - " + AppEnv.envTypeId());
+		System.out.println(AppEnv.confName() + " - "+AppEnv.confId());
+		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
 		System.out.println(AppEnv.systemProcessId());
 		//System.exit(0);
 		AppEnv.ready();
@@ -19,11 +20,11 @@ public class TestApp1 {
 		
 		
 		
-		DictionaryWord dw=AppEnv.word("three");
-		System.out.println(dw.getWord());
+		DictionaryWord dw=AppEnv.word("four");
+		System.out.println(dw.getWord()+ " - " + dw.getId());
 		
 		Thread.sleep(1000);
-		AppEnv.reloadEnvironment();
+		AppEnv.reloadConfiguration();
 		
 		Thread.sleep(1000);
 		AppEnv.reloadSubSystems();

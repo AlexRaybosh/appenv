@@ -17,13 +17,13 @@ import appenv.util.Utils;
 public class BootEntryShellEval extends BootEntry {
 	private Properties properties;
 	@Override
-	public boolean eval(BootstrapEnv bootstrapEnv, JsonObject conf) {
+	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String shellArgument=JsonUtils.getString(conf, "shellArgument");
 		if (Utils.isEmpty(shellArgument)) return false;
 		
 		boolean abortOnExecutionError=JsonUtils.getBool(conf, "abortOnExecutionError");
 
-		ProcessBuilder pb=new ProcessBuilder(new String[] {bootstrapEnv.shell, "-c", shellArgument} );
+		ProcessBuilder pb=new ProcessBuilder(new String[] {bootstrapAppConf.shell, "-c", shellArgument} );
 		pb.redirectInput(new File("/dev/null"));
 		pb.redirectOutput(Redirect.PIPE);
 		pb.redirectError(Redirect.PIPE);
@@ -47,24 +47,24 @@ public class BootEntryShellEval extends BootEntry {
 			}
 		} catch (Exception e) {
 			if (abortOnExecutionError) return Utils.rethrowRuntimeException(shellArgument+" in "+conf+" failed to execute: "+e.getMessage(),e);
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr(shellArgument+" in "+conf+" failed to execute: "+e.getMessage());
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(shellArgument+" in "+conf+" failed to execute: "+e.getMessage());
 			return false;
 		}
 		if (exit!=0) {
 			if (abortOnExecutionError) throw new RuntimeException(shellArgument+" in "+conf+" failed to execute"+errMsg);
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr(shellArgument+" in "+conf+" failed to execute"+errMsg);
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(shellArgument+" in "+conf+" failed to execute"+errMsg);
 			return false;
 		}
 
-		if (properties!=null && properties.size()==0 && bootstrapEnv.logErrors) BootstrapEnv.logerr("Empty result from "+conf);
+		if (properties!=null && properties.size()==0 && bootstrapAppConf.logErrors) BootstrapAppConf.logerr("Empty result from "+conf);
 		return properties!=null && properties.size()>0;
 	}
 
 
 
 	@Override
-	public String getEnvName() {
-		return properties.getProperty("env");
+	public String getAppConfName() {
+		return properties.getProperty("appConf");
 	}
 	@Override
 	public Properties getProperties() {

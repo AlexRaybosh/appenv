@@ -51,7 +51,7 @@ public class TaskRecord {
 	}
 	public TaskRecord(TaskType type, String ticket, JsonObject props) {
 		this(type,ticket);
-		for (Entry<String, JsonElement> e : props.entrySet()) {
+		if (props!=null) for (Entry<String, JsonElement> e : props.entrySet()) {
 			String field=e.getKey();
 			switch (JsonUtils.getType(e.getValue())) {
 			case NUMBER:
@@ -131,7 +131,7 @@ public class TaskRecord {
 	public long getExpireMs() {
 		if (expireMs!=null) return expireMs;
 		//Long ttl=JsonUtils.getLong(AppEnv.configuration(), "task", "type", taskType.getName(), "ttlMs");
-		Number esec=JsonUtils.getNumber(AppEnv.configuration(), "task", "type", taskType.getName(), "expiresAfterSeconds");
+		Number esec=JsonUtils.getNumber(AppEnv.conf(), "task", "type", taskType.getName(), "expiresAfterSeconds");
 		//removeDeadAfterMilliseconds= (long)(1000*.doubleValue());		
 		if (esec==null) {
 			esec=JsonUtils.getNumber(0, taskType.getMeta(),"expiresAfterSeconds");	

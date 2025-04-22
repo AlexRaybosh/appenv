@@ -15,7 +15,7 @@ public class TestApp2 {
 
 	public static void main(String[] args) throws Exception {
 		
-		AppEnv.presetEnvName("test1");
+		AppEnv.presetAppConfName("testapp1");
 		
 		Map<Integer, Future<Boolean>> hid=new HashMap<>();
 		for (int i=-1000;i <1000; ++i) {
@@ -39,8 +39,8 @@ public class TestApp2 {
 		List<DictionaryWord> lst=new ArrayList<>();
 		for (int i=0;i <1000000; ++i) {
 			AppEnv.hasWord(i);
-			//w=b.word("puke #"+i);
-			w=AppEnv.word(i);
+			w=AppEnv.word("puke #"+i);
+			//w=AppEnv.word(i);
 			lst.add(w);
 		}
 		for (DictionaryWord z : lst) {
@@ -52,7 +52,7 @@ public class TestApp2 {
 		}
 		System.out.println("done");
 		
-		Thread.sleep(10000);
+		AppEnv.destroy();
 	}
 
 }

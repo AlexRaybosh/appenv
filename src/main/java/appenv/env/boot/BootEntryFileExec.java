@@ -24,7 +24,7 @@ import appenv.util.Utils;
 public class BootEntryFileExec extends BootEntry {
 	private Properties properties;
 	@Override
-	public boolean eval(BootstrapEnv bootstrapEnv, JsonObject conf) {
+	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String fileName=JsonUtils.getString(conf, "file");
 		if (fileName==null) return false;
 		Path path=Paths.get(fileName);
@@ -36,13 +36,13 @@ public class BootEntryFileExec extends BootEntry {
 		if (!Files.exists(path)) {
 			//
 			if (abortOnFileMissing) throw new RuntimeException(fileName+" in bootstrap "+conf+" missing");
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr(fileName+" in bootstrap "+conf+" missing");
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(fileName+" in bootstrap "+conf+" missing");
 			return false;
 		}
 		if (!Files.isExecutable(path)) {
 			//
 			if (abortOnFileNotExecutable) throw new RuntimeException("Bootstrap "+fileName+" in "+conf+" is not executable");
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr("Bootstrap "+fileName+" in "+conf+" is not executable");
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr("Bootstrap "+fileName+" in "+conf+" is not executable");
 			return false;
 		}
 		
@@ -77,15 +77,15 @@ public class BootEntryFileExec extends BootEntry {
 			}
 		} catch (Exception e) {
 			if (abortOnExecutionError) return Utils.rethrowRuntimeException(errMsg,e);
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr(fileName+" in " +conf+ " failed to execute: "+e.getMessage());
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(fileName+" in " +conf+ " failed to execute: "+e.getMessage());
 			return false;
 		}
 		if (exit!=0) {
 			if (abortOnExecutionError) throw new RuntimeException(fileName+" in " +conf+ " failed to execute"+errMsg);
-			else if (bootstrapEnv.logErrors) BootstrapEnv.logerr(fileName+" in " +conf+ " failed to execute"+errMsg);
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(fileName+" in " +conf+ " failed to execute"+errMsg);
 			return false;
 		}
-		if (properties!=null && properties.size()==0 && bootstrapEnv.logErrors) BootstrapEnv.logerr("Empty result from "+conf);
+		if (properties!=null && properties.size()==0 && bootstrapAppConf.logErrors) BootstrapAppConf.logerr("Empty result from "+conf);
 		return properties!=null && properties.size()>0;
 	}
 
@@ -93,8 +93,8 @@ public class BootEntryFileExec extends BootEntry {
 
 
 	@Override
-	public String getEnvName() {
-		return properties.getProperty("env");
+	public String getAppConfName() {
+		return properties.getProperty("appConf");
 	}
 	@Override
 	public Properties getProperties() {
