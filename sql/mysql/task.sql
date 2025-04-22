@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS task_queue (
   id BIGINT NOT NULL,
   task_type_id INT NOT NULL,
   task_state_id INT NOT NULL,
-  env_id INT NOT NULL,
+  env_type_id INT NOT NULL,
   ticket VARCHAR(128) NOT NULL,
   process_at_ms BIGINT NOT NULL,
   payload BLOB NULL,
@@ -53,8 +53,8 @@ PARTITIONS 32;
 
 
 CREATE UNIQUE INDEX task_ticket_idx ON task_queue (task_type_id, ticket);
-CREATE INDEX task_expire_idx ON task_queue (env_id, expire_ms);
-CREATE INDEX task_pickup_idx ON task_queue (env_id, task_type_id, task_state_id, process_at_ms);
+CREATE INDEX task_expire_idx ON task_queue (env_type_id, expire_ms);
+CREATE INDEX task_pickup_idx ON task_queue (env_type_id, task_type_id, task_state_id, process_at_ms);
 
 
 CREATE TABLE IF NOT EXISTS task_queue_error (

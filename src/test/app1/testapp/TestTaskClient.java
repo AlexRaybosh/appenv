@@ -30,8 +30,9 @@ public class TestTaskClient {
 		long s=System.currentTimeMillis();
 		int N=1000000;
 		for (int i=0; i< N; ++i) {
-			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}");
-			JsonObject props=null;
+			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}");
+			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}");
+			//JsonObject props=null;
 			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
 			submits.add(f);
 		}

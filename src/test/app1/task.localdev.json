@@ -13,7 +13,7 @@
 						"depends": [
 							"processMaintenance"
 						],
-						"insertConcurrency" : 10,
+						"insertConcurrency" : 16,
 						"insertQueueSize" : 65535,
 						"insertBulkSize" : 1024,
 						"insertRetryOnErrorCount" : 3,
