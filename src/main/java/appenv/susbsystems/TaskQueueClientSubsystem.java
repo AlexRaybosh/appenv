@@ -114,7 +114,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 		
 		cw.batchInsertUnorderedRows("insert into common_tmp (i1, t1) values (?, ?)",ticketMap.keySet());
 		
-		String sql="select t.i1 as task_type_id, t.t1 as ticket, q.id  from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
+		String sql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
 		//String sql="select t.i1 as task_type_id, t.t1 as ticket, q.id  from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and t.t1=q.ticket)";
 		/*String esql="EXPLAIN PARTITIONS "+sql;
 		for ( Map<String, Object> row : cw.selectLabelMap(esql, false)) {
@@ -127,12 +127,12 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 		System.out.println("------------------------------------------------------------------");
 		*/
 		for (Object[] row : cw.select(sql, true)) {
-			Number id = (Number)row[2];
+			//Number id = (Number)row[2];
 			UnorderedRow<Object> key=new UnorderedRow<>(((Number)row[0]).intValue(), row[1]);
 			List<TaskRecord> subList = ticketMap.remove(key);
 			if (subList!=null) {
 				// duplicate task
-				for (TaskRecord task : subList) task.setId(id.longValue());
+				//for (TaskRecord task : subList) task.setId(id.longValue());
 			}
 		}
 		List<Object[]> taskRows=new ArrayList<>();
@@ -141,12 +141,11 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 		Long now=System.currentTimeMillis();
 		for (Entry<UnorderedRow<Object>, List<TaskRecord>> e : ticketMap.entrySet()) {
 			List<TaskRecord> subList = e.getValue();
-			Long id=AppEnv.newId("task_queue_id");
-			for (TaskRecord task : subList) task.setId(id);
+			//Long id=AppEnv.newId("task_queue_id");
+			//for (TaskRecord task : subList) task.setId(id);
 			TaskRecord task=subList.get(0); // only interest 1 task for the key
 			long expireMs=task.getExpireMs();
 			Object[] taskRow=new Object[] {
-					task.getId(), 
 					task.getTaskTypeId(), 
 					TaskState.INIT.getStateId(),
 					AppEnv.envTypeId(),
@@ -164,7 +163,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 					String field=te.getKey();
 					for (String v : te.getValue()) {
 						Long tid=AppEnv.newId("task_field_text_id");
-						fieldTextRows.add(new Object[] {tid, id, task.getTaskTypeId(), field, v});
+						fieldTextRows.add(new Object[] {tid, task.getTicket(), task.getTaskTypeId(), field, v});
 					}
 				}
 			}
@@ -173,26 +172,26 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 					String field=te.getKey();
 					for (Long v : te.getValue()) {
 						Long tid=AppEnv.newId("task_field_num_id");
-						fieldNumRows.add(new Object[] {tid, id, task.getTaskTypeId(), field, v});
+						fieldNumRows.add(new Object[] {tid, task.getTicket(), task.getTaskTypeId(), field, v});
 					}
 				}
 			}
 
 		}
 		if (!taskRows.isEmpty()) {
-			String insertTaskSql="insert into task_queue (id,task_type_id,task_state_id,env_type_id,"
+			String insertTaskSql="insert into task_queue (task_type_id,task_state_id,env_type_id,"
 					+ "ticket,process_at_ms,payload,insert_ms,"
 					+ "expire_ms, error_count, last_ms) values ("
-					+ "?,?,?,?, ?,?,?,?, ?,?,?)";
+					+ "?,?,?, ?,?,?,?, ?,?,?)";
 			cw.batchInsert(insertTaskSql, taskRows);
 
 			if (!fieldTextRows.isEmpty()) {
-				String insertTaskFieldTextSql="insert into task_field_text (id,task_queue_id,task_type_id,field,value) values (?,?,?,?,?)";
+				String insertTaskFieldTextSql="insert into task_field_text (id,ticket,task_type_id,field,value) values (?,?,?,?,?)";
 				cw.batchInsert(insertTaskFieldTextSql, fieldTextRows);
 			}
 			
 			if (!fieldNumRows.isEmpty()) {
-				String insertTaskFieldNumSql="insert into task_field_num (id,task_queue_id,task_type_id,field,value) values (?,?,?,?,?)";
+				String insertTaskFieldNumSql="insert into task_field_num (id,ticket,task_type_id,field,value) values (?,?,?,?,?)";
 				cw.batchInsert(insertTaskFieldNumSql, fieldNumRows);
 			}
 		}	

@@ -29,9 +29,11 @@ public class TestTaskClient {
 		List<TaskFuture> submits=new ArrayList<>();
 		long s=System.currentTimeMillis();
 		int N=1000000;
+		
 		for (int i=0; i< N; ++i) {
-			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}");
-			JsonObject props=null;
+			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439
+			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}"); 12.5 K
+			//JsonObject props=null; // 34K
 			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
 			submits.add(f);
 		}

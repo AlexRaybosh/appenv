@@ -13,11 +13,11 @@
 						"depends": [
 							"processMaintenance"
 						],
-						"insertConcurrency" : 10,
+						"insertConcurrency" : 15,
 						"insertQueueSize" : 65535,
-						"insertBulkSize" : 1024,
+						"insertBulkSize" : 512,
 						"insertRetryOnErrorCount" : 3,
-						"bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket, q.id  from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
 						"timers": {
 							"tick": {
 								"startAfterSeconds": 1,
