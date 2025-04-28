@@ -45,7 +45,7 @@
 				"processMaintenance": {
 					"class": "appenv.susbsystems.ProcessMaintenance",
 					"considerDeadAfterInactivitySeconds": 10.0,
-					"removeDeadAfterSeconds": 120.0,
+					"removeDeadAfterSeconds": 3600.0,
 					"timers": {
 						"touch": {
 							"startAfterSeconds": 0,

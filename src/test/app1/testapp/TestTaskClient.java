@@ -28,11 +28,11 @@ public class TestTaskClient {
 		TaskType tt=TaskType.name("dummy");
 		List<TaskFuture> submits=new ArrayList<>();
 		long s=System.currentTimeMillis();
-		int N=1000000;
+		int N=2000000;
 		
 		for (int i=0; i< N; ++i) {
-			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439
-			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}"); 12.5 K
+			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439
+			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}"); 
 			//JsonObject props=null; // 34K
 			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
 			submits.add(f);
@@ -51,7 +51,7 @@ public class TestTaskClient {
 		
 		
 		
-		Thread.sleep(10000);
+		//Thread.sleep(10000);
 		AppEnv.destroy();
 		//AppScope.getAppScope().destroy();
 		

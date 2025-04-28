@@ -1,11 +1,6 @@
 {
 	"appConf": {
 		"test-task-client": {
-			"task": {
-				
-			}
-		},
-		"test-task-client": {
 			"subsystems": {
 				"entries": {
 					"taskQueueClient": {
@@ -15,23 +10,15 @@
 						],
 						"insertConcurrency" : 15,
 						"insertQueueSize" : 65535,
-						"insertBulkSize" : 512,
+						"insertBulkSize" : 1024,
 						"insertRetryOnErrorCount" : 3,
-						"bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-						"timers": {
-							"tick": {
-								"startAfterSeconds": 1,
-								"timerIntervalSeconds": 0.3
-							},
-							"tock": {
-								"timerIntervalSeconds": 0.6
-							}
-						}
+						"#bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"database": "core"
 					}
 				}
 			}
 		},		
-		"test4": {
+		"test-task-server": {
 			"subsystems": {
 				"entries": {
 					"taskQueueBackend": {
@@ -40,14 +27,28 @@
 							"processMaintenance"
 						],
 						"timers": {
-							"tick": {
-								"startAfterSeconds": 1,
-								"timerIntervalSeconds": 0.3
-							},
-							"tock": {
-								"timerIntervalSeconds": 0.6
+							"pickup": {
+								"timerIntervalSeconds": 10
 							}
-						}
+						},
+						"tasks" : {
+							"dummy" : {
+								"class": "appenv.task.TaskDummyHandler",
+								"pickupSize" : 2,
+								"processBulkSize" : 2,
+								"concurrency" : 2,
+								"enabled" : true
+							},
+							"daily_run" : {
+								"class": "appenv.task.TaskDailyHandler"
+							}
+						},
+						"database": "core",
+						"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?",
+						"updatePickedStatusSqlPrefix" : "update task_queue_process p straight_join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? where p.pickup_id=?",
+						"#updatePickedStatusSqlPrefix - for tsql/postgress" : "update tq set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? from task_queue_process p join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) where p.pickup_id=?",
+						"addPickedStatusSqlAddTaskTypeCondition" : true
+						
 					}
 				}
 			}
@@ -57,12 +58,7 @@
 		"task": {
 			"typeCacheSeconds": 10,
 			"typeCacheSize": 256,
-			"database": "core",
-			"type": {
-				"dummy": {
-					"ttlMs": 30000
-				}
-			}
+			"database": "core"
 		}
 	}
 }

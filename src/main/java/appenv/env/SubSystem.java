@@ -24,14 +24,14 @@ public abstract class SubSystem {
 	 */
 	public abstract boolean init(boolean initial, JsonObject conf) throws Exception;
 	public abstract void destroy();
-	public boolean onTick(String tickName, Long lastRun) {
+	public boolean onTick(long start, long interval, String tickName, Long lastRun) {
 		try {
-			return tick(tickName, lastRun);
+			return tick(start, interval, tickName, lastRun);
 		} catch (Exception e) {
 			appScope.logerr("SubSystem "+getName()+" timer "+tickName+" error: ", e);
 			return false;
 		}
 	}
 	
-	public abstract boolean tick(String tickName, Long lastRun) throws Exception;
+	public abstract boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception;
 }

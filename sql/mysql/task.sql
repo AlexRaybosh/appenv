@@ -31,62 +31,55 @@ insert into task_state (id,task_state_name) values (2, 'SUCCESS');
 insert into task_state (id,task_state_name) values (3, 'ERROR');
 insert into task_state (id,task_state_name) values (4, 'FATAL');
 
-
 CREATE TABLE IF NOT EXISTS task_queue (
   ticket VARCHAR(128) NOT NULL,
   task_type_id INT NOT NULL,
   task_state_id INT NOT NULL,
   env_type_id INT NOT NULL,
   process_at_ms BIGINT NOT NULL,
-  payload BLOB NULL,
-  result BLOB NULL,
+  payload LONGBLOB NULL,
+  result LONGBLOB NULL,
+  submit_system_process_id BIGINT NULL,
+  system_process_id BIGINT NULL,
   insert_ms BIGINT NOT NULL,
-  expire_ms BIGINT NOT NULL,
-  error_count INT NOT NULL,
   last_ms BIGINT NOT NULL,
   PRIMARY KEY (task_type_id, ticket)
 )
 engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci
 PARTITION BY HASH(task_type_id)
 PARTITIONS 32;
-
-CREATE INDEX task_expire_idx ON task_queue (env_type_id, expire_ms);
-CREATE INDEX task_pickup_idx ON task_queue (env_type_id, task_type_id, task_state_id, process_at_ms);
-
-
-CREATE UNIQUE INDEX task_ticket_idx ON task_queue (task_type_id, ticket);
-CREATE INDEX task_expire_idx ON task_queue (env_type_id, expire_ms);
 CREATE INDEX task_pickup_idx ON task_queue (env_type_id, task_type_id, task_state_id, process_at_ms);
 
 
 CREATE TABLE IF NOT EXISTS task_queue_error (
   id BIGINT NOT NULL,
   task_type_id INT NOT NULL,  
-  task_queue_id BIGINT NOT NULL,
+  ticket VARCHAR(128) NOT NULL,
   last_ms BIGINT NOT NULL,
   system_process_id BIGINT NOT NULL,
-  error TEXT NULL,
-  PRIMARY KEY (task_type_id, task_queue_id, id)
+  error MEDIUMTEXT NULL,
+  PRIMARY KEY (id)
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE INDEX task_queue_error_idx ON task_queue_error (task_type_id, ticket, last_ms);
+
+
+CREATE TABLE IF NOT EXISTS task_queue_process (
+  task_type_id INT NOT NULL,
+  ticket VARCHAR(128) NOT NULL,    
+  system_process_id BIGINT NOT NULL,
+  pickup_id VARCHAR(128) NOT NULL,
+  PRIMARY KEY (task_type_id, ticket)
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci
 PARTITION BY HASH(task_type_id)
 PARTITIONS 32;
-CREATE INDEX task_queue_error_idx ON task_queue_error (task_queue_id, last_ms);
-
-CREATE TABLE IF NOT EXISTS task_queue_process (
-  task_queue_id BIGINT NOT NULL,
-  task_type_id INT NOT NULL,    
-  system_process_id BIGINT NOT NULL,
-  PRIMARY KEY (task_type_id, task_queue_id)
-) ENGINE = InnoDB
-PARTITION BY HASH(task_type_id)
-PARTITIONS 32;
+CREATE INDEX task_queue_process_pickup_idx ON task_queue_process (pickup_id);
 
 
 
 CREATE TABLE IF NOT EXISTS task_field_text (
-  id BIGINT NOT NULL,
-  ticket VARCHAR(128) NOT NULL,
   task_type_id INT NOT NULL,
+  ticket VARCHAR(128) NOT NULL,
+  id BIGINT NOT NULL,
   field VARCHAR(128) NOT NULL,
   value VARCHAR(600) NOT NULL,
   PRIMARY KEY (task_type_id, ticket, id)
@@ -95,12 +88,11 @@ PARTITION BY HASH(task_type_id)
 PARTITIONS 32;
 CREATE INDEX task_field_text_val_idx ON task_field_text (field, value);
 
-truncate table task_field_num;
 
 CREATE TABLE IF NOT EXISTS task_field_num (
-  id BIGINT NOT NULL,
-  ticket VARCHAR(128) NOT NULL,
   task_type_id INT NOT NULL,
+  ticket VARCHAR(128) NOT NULL,
+  id BIGINT NOT NULL,  
   field VARCHAR(128) NOT NULL,
   value BIGINT NOT NULL,
   PRIMARY KEY (task_type_id, ticket, id)

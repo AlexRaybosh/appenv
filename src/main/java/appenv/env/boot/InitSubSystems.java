@@ -17,6 +17,7 @@ import appenv.async.AsyncEngine;
 import appenv.async.Request;
 import appenv.async.Service;
 import appenv.async.ServiceBackend;
+import appenv.env.AppEnv;
 import appenv.env.AppScope;
 import appenv.env.SubSystem;
 import appenv.util.DummyErrorFuture;
@@ -225,6 +226,7 @@ public class InitSubSystems {
 			}
 		} catch (Exception e) {
 			try {stub.destroy();} catch (Exception exx) {}
+			AppEnv.logerr("Failed to initialize subsystem: "+name+" with conf: "+conf, e);
 			throw e;
 		}
 		stub.init(name,conf);

@@ -30,16 +30,17 @@ import appenv.util.UnorderedRow;
 public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClient {
 	JsonObject conf;
 	AsyncEngine asyncEngine;
-	Service<Long> lookupCreateService;
+	Service<Void> lookupCreateService;
 	String dbName;
+	String bulkExistentTaskLookupSql;
 	@Override
 	public boolean init(boolean initial, JsonObject c) throws Exception {
 		this.conf=c;
 		System.out.println(JsonUtils.prettyPrint(conf));
 		if (AppEnv.envTypeId()==null) throw new RuntimeException("Environment "+AppEnv.envTypeName()+"' is not registered in the DB");
 		asyncEngine=AsyncEngine.create();
-		lookupCreateService=asyncEngine.register("lookupCreateByName", new ServiceBackend<Long>() {	
-			public void process(List<Request<Long>> bulk) throws Exception {insert(bulk);}
+		lookupCreateService=asyncEngine.register("lookupCreateByName", new ServiceBackend<Void>() {	
+			public void process(List<Request<Void>> bulk) throws Exception {insert(bulk);}
 			public int getMaxWorkers() {return JsonUtils.getInteger(1, conf, "insertConcurrency");}
 			public int getMaxQueuedRequests() {return JsonUtils.getInteger(1, conf, "insertQueueSize");}
 			public int getMaxBulkSize() {
@@ -47,14 +48,16 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 			}
 		});
 		dbName=JsonUtils.getString("core", conf, "database");
+		bulkExistentTaskLookupSql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
+		bulkExistentTaskLookupSql=JsonUtils.getString(bulkExistentTaskLookupSql, conf, "bulkExistentTaskLookupSql");
 		return true;
 	}
 
-	protected void insert(List<Request<Long>> bulk) throws SQLException, InterruptedException {
-		final Map<TaskRecord,List<Request<Long>>> map=new HashMap<>(bulk.size());  
-		for (Request<Long> r : bulk) {
+	protected void insert(List<Request<Void>> bulk) throws SQLException, InterruptedException {
+		final Map<TaskRecord,List<Request<Void>>> map=new HashMap<>(bulk.size());  
+		for (Request<Void> r : bulk) {
 			TaskRecord task=(TaskRecord)r.getArgs()[0];
-			List<Request<Long>> lst = map.get(task);
+			List<Request<Void>> lst = map.get(task);
 			if (lst==null) {lst=new ArrayList<>(1);	map.put(task, lst);}
 			lst.add(r);
 		}
@@ -71,10 +74,10 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 			}
 		});
 		
-		for (Entry<TaskRecord, List<Request<Long>>> e : map.entrySet()) {
+		for (Entry<TaskRecord, List<Request<Void>>> e : map.entrySet()) {
 			TaskRecord task=e.getKey();
-			for (Request<Long> r : e.getValue()) {
-				r.setResult(task.getId());
+			for (Request<Void> r : e.getValue()) {
+				r.setResult(null);
 			}
 		}
 		
@@ -85,13 +88,13 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 	}
 
 	@Override
-	public boolean tick(String tickName, Long lastRun) throws Exception {
+	public boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception {
 		return false;
 	}
 
 	@Override
 	public TaskFuture submit(TaskRecord task) throws InterruptedException {
-		Future<Long> ret = lookupCreateService.call(asyncEngine, task);
+		Future<Void> ret = lookupCreateService.call(asyncEngine, task);
 		return new TaskFuture(task.getTicket(), ret);
 	}
 	
@@ -114,7 +117,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 		
 		cw.batchInsertUnorderedRows("insert into common_tmp (i1, t1) values (?, ?)",ticketMap.keySet());
 		
-		String sql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
+		//String sql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
 		//String sql="select t.i1 as task_type_id, t.t1 as ticket, q.id  from common_tmp t straight_join task_queue q FORCE INDEX (task_ticket_idx) on (t.i1=q.task_type_id and t.t1=q.ticket)";
 		/*String esql="EXPLAIN PARTITIONS "+sql;
 		for ( Map<String, Object> row : cw.selectLabelMap(esql, false)) {
@@ -126,7 +129,7 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 		}
 		System.out.println("------------------------------------------------------------------");
 		*/
-		for (Object[] row : cw.select(sql, true)) {
+		for (Object[] row : cw.select(bulkExistentTaskLookupSql, true)) {
 			//Number id = (Number)row[2];
 			UnorderedRow<Object> key=new UnorderedRow<>(((Number)row[0]).intValue(), row[1]);
 			List<TaskRecord> subList = ticketMap.remove(key);
@@ -144,17 +147,15 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 			//Long id=AppEnv.newId("task_queue_id");
 			//for (TaskRecord task : subList) task.setId(id);
 			TaskRecord task=subList.get(0); // only interest 1 task for the key
-			long expireMs=task.getExpireMs();
 			Object[] taskRow=new Object[] {
-					task.getTaskTypeId(), 
+					task.getTaskTypeId(),
+					task.getTicket(),
 					TaskState.INIT.getStateId(),
 					AppEnv.envTypeId(),
-					task.getTicket(),
 					task.getProcessAtMs(),
 					task.getPayload(),
+					AppEnv.systemProcessId(),
 					now,
-					expireMs,
-					0,
 					now
 					};
 			taskRows.add(taskRow);
@@ -179,10 +180,9 @@ public class TaskQueueClientSubsystem extends SubSystem implements TaskQueueClie
 
 		}
 		if (!taskRows.isEmpty()) {
-			String insertTaskSql="insert into task_queue (task_type_id,task_state_id,env_type_id,"
-					+ "ticket,process_at_ms,payload,insert_ms,"
-					+ "expire_ms, error_count, last_ms) values ("
-					+ "?,?,?, ?,?,?,?, ?,?,?)";
+			String insertTaskSql="insert into task_queue (task_type_id,ticket,task_state_id,env_type_id,"
+					+ "process_at_ms,payload,submit_system_process_id,insert_ms,last_ms) values ("
+					+ "?,?,?,?,?,?,?,?,?)";
 			cw.batchInsert(insertTaskSql, taskRows);
 
 			if (!fieldTextRows.isEmpty()) {

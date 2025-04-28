@@ -443,7 +443,7 @@ public class ProcessLsof {
 		 return new Reader().read(pids);
 	 }
 	 public static ProcessLsof lsof() throws InterruptedException {
-		 Reader r=new Reader();
+		 ProcessLsof.Reader r=new ProcessLsof.Reader();
 		 Long pid=Utils.getPid();
 		 Map<Long, ProcessLsof> m = r.read(Arrays.asList(pid));
 		 if (m.size()==0) throw new RuntimeException("Failed to lsof self");

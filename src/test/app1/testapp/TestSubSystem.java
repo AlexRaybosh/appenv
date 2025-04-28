@@ -18,7 +18,7 @@ public class TestSubSystem extends SubSystem {
 	}
 
 	@Override
-	public boolean tick(String tickName, Long lastRun) throws Exception {
+	public boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception {
 		System.out.println(tickName+" : "+lastRun+"\t"+cnt.incrementAndGet());
 		return true;
 	}

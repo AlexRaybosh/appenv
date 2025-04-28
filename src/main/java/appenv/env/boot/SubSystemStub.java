@@ -41,7 +41,7 @@ public class SubSystemStub {
 				tickIsRunning=true;
 			}
 			try {
-				stopped=!subsystem.onTick(name, lastRun);
+				stopped=!subsystem.onTick(start,interval, name, lastRun);
 				if (stopped) {
 					tickFuture.cancel(true);
 				}

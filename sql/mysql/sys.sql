@@ -77,7 +77,7 @@ create table if not exists cluster_member (
     constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id) 
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, app_conf_id, last_ms) VALUES (1, 'z440.localdomain', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
+INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, app_conf_id, last_ms) VALUES (1, 'z440', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
 
 
 

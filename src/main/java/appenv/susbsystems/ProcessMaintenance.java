@@ -89,7 +89,7 @@ public class ProcessMaintenance extends SubSystem {
 	
 	
 	@Override
-	public boolean tick(String tickName, Long lastRun) throws Exception {
+	public boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception {
 		long now=getAppScope().getTime();
 		
 		if (TOUCH.equals(tickName)) {
@@ -177,9 +177,9 @@ public class ProcessMaintenance extends SubSystem {
 
 
 	@Override
-	public boolean onTick(String tickName, Long lastRun) {
+	public boolean onTick(long startAfterMs, long intervalMs, String tickName, Long lastRun) {
 		try {
-			return tick(tickName, lastRun);
+			return tick(startAfterMs, intervalMs, tickName, lastRun);
 		} catch (Exception e) {
 			appScope.logerr("ProcessMaintenence timer "+tickName+" error: "+Utils.getStackTrace(Utils.extraceCause(e)));
 			return true;

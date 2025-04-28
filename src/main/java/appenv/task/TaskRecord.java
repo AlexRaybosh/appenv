@@ -33,9 +33,7 @@ public class TaskRecord {
 	}
 	final TaskType taskType;
 	final String ticket;
-	private Long id;
 	private Long processAtMs;
-	private Long expireMs;
 	private byte[] payload;
 	private Map<String,Set<String>> fieldToText;
 	private Map<String,Set<Long>> fieldToNumber;
@@ -82,7 +80,7 @@ public class TaskRecord {
 		}
 	}
 	
-	private void addPropString(String field, String val) {
+	public void addPropString(String field, String val) {
 		if (fieldToText==null) fieldToText=new HashMap<>();
 		Set<String> s = fieldToText.get(field);
 		if (s==null) {
@@ -92,7 +90,7 @@ public class TaskRecord {
 		s.add(val);
 	}
 	
-	private void addPropNumber(String field, Long num) {
+	public void addPropNumber(String field, Long num) {
 		if (fieldToNumber==null) fieldToNumber=new HashMap<>();
 		Set<Long> s = fieldToNumber.get(field);
 		if (s==null) {
@@ -101,7 +99,7 @@ public class TaskRecord {
 		}
 		s.add(num);		
 	}
-	private void addPropBool(String field, boolean b) {
+	public void addPropBool(String field, boolean b) {
 		addPropString(field, b?"true":"false");
 	}
 	
@@ -116,18 +114,14 @@ public class TaskRecord {
 	final public Integer getTaskTypeId() {
 		return taskType.getId();
 	}
-	public void setId(long id) {
-		this.id=id;
-	}
-	public Long getId() {
-		return id;
-	}
+
 	public long getProcessAtMs() {
 		return processAtMs==null?System.currentTimeMillis():processAtMs;
 	}
 	public byte[] getPayload() {
 		return payload;
 	}
+	/*
 	public long getExpireMs() {
 		if (expireMs!=null) return expireMs;
 		//Long ttl=JsonUtils.getLong(AppEnv.configuration(), "task", "type", taskType.getName(), "ttlMs");
@@ -139,7 +133,7 @@ public class TaskRecord {
 		expireMs=(long)(1000*esec.doubleValue());
 		return getProcessAtMs()+expireMs;
 		
-	}
+	}*/
 	public Map<String,Set<String>> getFieldToText() {return fieldToText;}
 	public Map<String,Set<Long>> getFieldToNumber() {return fieldToNumber;}
 }

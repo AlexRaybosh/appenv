@@ -7,11 +7,11 @@ import java.util.concurrent.TimeoutException;
 
 import appenv.env.AppEnv;
 
-public class TaskFuture implements Future<Long> {
+public class TaskFuture implements Future<Void> {
 	final String ticket;
-	final Future<Long> future;
-	TaskFuture(Future<Long> future) {this(null, future);}
-	public TaskFuture(String ticket, Future<Long> future) {
+	final Future<Void> future;
+	TaskFuture(Future<Void> future) {this(null, future);}
+	public TaskFuture(String ticket, Future<Void> future) {
 		this.ticket=ticket==null?AppEnv.createUniqueKey():ticket;
 		this.future=future;
 	}
@@ -26,9 +26,9 @@ public class TaskFuture implements Future<Long> {
 	public boolean isDone() {return future.isDone();}
 
 	@Override
-	public Long get() throws InterruptedException, ExecutionException {return future.get();}
+	public Void get() throws InterruptedException, ExecutionException {return future.get();}
 
 	@Override
-	public Long get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {return future.get(timeout, unit);}
+	public Void get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {return future.get(timeout, unit);}
 
 }
