@@ -1,5 +1,5 @@
 {
-	"include" : ["db","allincludes"],
+	"include" : ["db","allincludes","task"],
 	
 	"appConf" : {
 		"testapp1" : {

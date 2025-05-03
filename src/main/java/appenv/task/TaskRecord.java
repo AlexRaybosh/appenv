@@ -1,5 +1,6 @@
 package appenv.task;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -16,6 +17,22 @@ import appenv.util.JsonUtils;
 import appenv.util.JsonUtils.JsonType;
 
 public class TaskRecord {
+
+	public final TaskState getTaskState() {
+		return taskState;
+	}
+	public final Integer getEnvId() {
+		return envId;
+	}
+	public final long getInsertedAtMs() {
+		return insertedAtMs;
+	}
+	@Override
+	public String toString() {
+		return "TaskRecord [taskType=" + taskType + ", ticket=" + ticket + ", processAtMs=" + processAtMs + ", payload="
+				+ Arrays.toString(payload) + ", fieldToText=" + fieldToText + ", fieldToNumber=" + fieldToNumber
+				+ ", taskState=" + taskState + ", envId=" + envId + "]";
+	}
 	@Override
 	public int hashCode() {
 		return Objects.hash(taskType, ticket);
@@ -37,6 +54,9 @@ public class TaskRecord {
 	private byte[] payload;
 	private Map<String,Set<String>> fieldToText;
 	private Map<String,Set<Long>> fieldToNumber;
+	private TaskState taskState;
+	private Integer envId;
+	private Long insertedAtMs;
 	
 	public TaskRecord(TaskType type, String ticket, byte[] payload, Map<String,Set<String>> fieldToText, Map<String,Set<Long>> fieldToNumber) {
 		this(type,ticket,payload);
@@ -115,25 +135,30 @@ public class TaskRecord {
 		return taskType.getId();
 	}
 
-	public long getProcessAtMs() {
-		return processAtMs==null?System.currentTimeMillis():processAtMs;
+	public Long getProcessAtMs() {
+		return processAtMs;
 	}
 	public byte[] getPayload() {
 		return payload;
 	}
-	/*
-	public long getExpireMs() {
-		if (expireMs!=null) return expireMs;
-		//Long ttl=JsonUtils.getLong(AppEnv.configuration(), "task", "type", taskType.getName(), "ttlMs");
-		Number esec=JsonUtils.getNumber(AppEnv.conf(), "task", "type", taskType.getName(), "expiresAfterSeconds");
-		//removeDeadAfterMilliseconds= (long)(1000*.doubleValue());		
-		if (esec==null) {
-			esec=JsonUtils.getNumber(0, taskType.getMeta(),"expiresAfterSeconds");	
-		}
-		expireMs=(long)(1000*esec.doubleValue());
-		return getProcessAtMs()+expireMs;
-		
-	}*/
 	public Map<String,Set<String>> getFieldToText() {return fieldToText;}
 	public Map<String,Set<Long>> getFieldToNumber() {return fieldToNumber;}
+	public void setTaskState(TaskState taskState) {
+		this.taskState=taskState;
+		
+	}
+	public void setEnvId(int envId) {
+		this.envId=envId;
+	}
+	public void setProcessAtMs(long processMs) {
+		this.processAtMs=processMs;
+		
+	}
+	public void setInsertedAtMs(long insertMs) {
+		this.insertedAtMs=insertMs;
+	}
+	public void setPayload(byte[] payload) {
+		this.payload=payload;
+	}
+	
 }

@@ -8,11 +8,11 @@ import java.util.Map;
 import appenv.env.AppEnv;
 import appenv.etc.DictionaryWord;
 
-public class Example07_DictionaryForCommonWords {
+public class TestDictionaryMySQL {
 
 	public static void main(String[] args) throws Exception {
 		// Changed the bootstrap resource or file
-		//AppEnv.presetBootstrapResource("bootstrap-07-dictionary.json");
+		AppEnv.presetBootstrapResource("bootstrap-postgres.json");
 		
 
 		AppEnv.db().update("truncate table word_dictionary");

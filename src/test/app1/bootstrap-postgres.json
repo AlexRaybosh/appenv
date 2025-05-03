@@ -1,0 +1,86 @@
+{
+	"include" : ["allincludes","task-postgres"],
+	
+	"appConf" : {
+		"testapp1" : {
+		},
+		"testapp2" : {		
+		}
+	},
+
+	"bootstrap" : {
+		"shell" : "/bin/bash",
+		"abortOnError" : false,
+		"abortOnErrorIfShellEval" : "[[ \"$APP_ENV_TYPE\" == \"prod\" || \"$APP_ENV_TYPE\" == \"beta\" ]] || { echo non production environment $APP_ENV_TYPE detected>&2; exit 1; }",
+		"overrideConfNameFromEnvironmentVariable" : "APP_CONF_NAME",
+		"overrideEnvTypeFromEnvironmentVariable" : "APP_ENV_TYPE",
+		"logErrors" : true,
+		"disableDatabaseEnvironmentVariable" : "DISABLE_DB",
+		"entries" : [
+			{
+				"propertiesEntryType" : "SHELL_EVAL",
+				"shellArgument" : "${PROPERTIES_PROVIDER}"		
+			},
+			{
+				"propertiesEntryType" : "SHELL_EVAL",
+				"shellArgument" : "${HOME}/${APP_ENV_TYPE}/test_props_provider.sh",
+				"abortOnExecutionError" : true			
+			},		
+			{
+				"propertiesEntryType" : "FILE_EXEC",
+				"file" : "./src/main/java/test_props_provider.sh",
+				"args" : ["skip", "me"],
+				"abortOnFileMissing" : false,
+				"abortOnFileNotExecutable" : false,
+				"abortOnExecutionError" : true
+			},						
+			{
+				"propertiesEntryType" : "FILE",
+				"file" : "./src/main/java/test_props_provider.properties",
+				"abortOnLoadError" : true,
+				"abortOnFileMissing" : false
+			},			
+			{
+				"propertiesEntryType" : "BUILDIN",
+				"properties" : {
+					"dburl"	:	"jdbc:postgresql://localhost:5432/postgres?sslmode=disable",
+					"dbuser":	"postgres",
+					"dbpassword" : "pg",
+					"debug" : "true",
+					"appConf" : "test-app",
+					"logdbpassword" : "test2",
+					"envType" : "localdev"
+				}
+			}
+		]
+	},
+
+	
+	"defaults" : {
+		"database" : {
+			"core" : {
+				"maxCachedPreparedStatements" : 2000,
+				"maxConnections" : 30, 
+				"retryTimeoutSeconds" : 10.0,		
+				"overborrowPenaltySeconds" : 0.5,
+				"batchSize" : 1024,
+				"initStatements" : [
+					{"#onOpen" : "SET enable_hashjoin=off"},
+					{"#onOpen" : "SET enable_seqscan=off"},
+					{"#onOpen" : "SET enable_mergejoin=off"},
+					{"#onOpen" : "SET join_collapse_limit=1"},
+					{
+						"onOpen" : "create temporary table common_tmp ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 text null, b1 BYTEA null, b2 BYTEA null) ON COMMIT DELETE ROWS",
+						"onClose": "drop table if exists common_tmp",
+						"autoCommit" : false
+					},
+					{
+						"onOpen" : "create temporary table common_tmp1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 text null, b1 BYTEA null, b2 BYTEA null) ON COMMIT DELETE ROWS",
+						"onClose": "drop table if exists common_tmp1",					
+						"autoCommit" : false
+					}
+				]				
+			}
+		}
+	}
+}

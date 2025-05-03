@@ -1,5 +1,5 @@
 /*
- * 2009-2015, Alex Raybosh
+ * Alex Raybosh, 2009-2015
  */
 
 package appenv.db.impl;

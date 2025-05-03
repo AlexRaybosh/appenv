@@ -30,7 +30,7 @@
 				}
 			}
 		},
-		"dev": {
+		"testapp4": {
 			"subsystems": {
 				"entries": {
 					"test": null

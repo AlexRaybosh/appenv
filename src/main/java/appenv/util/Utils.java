@@ -967,7 +967,14 @@ public final class Utils {
 		if (c instanceof RuntimeException) throw (RuntimeException)c;
 		throw new RuntimeException(t);
 	}
-
+	public static <R> R rethrowRuntimeOrInterruptedException(Throwable t) throws InterruptedException {
+		if (t instanceof InterruptedException) throw (InterruptedException)t;
+		Exception c = extraceCause(t);
+		if (c instanceof InterruptedException) throw (InterruptedException)c;
+		if (c instanceof RuntimeException) throw (RuntimeException)c;
+		throw new RuntimeException(t);
+	}
+	
 	static String getFrame(int level) {
 		try {
 			if (1==1) throw new RuntimeException();

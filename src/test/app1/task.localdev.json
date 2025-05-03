@@ -12,7 +12,7 @@
 						"insertQueueSize" : 65535,
 						"insertBulkSize" : 1024,
 						"insertRetryOnErrorCount" : 3,
-						"#bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"bulkExistentTaskLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
 						"database": "core"
 					}
 				}
@@ -28,27 +28,45 @@
 						],
 						"timers": {
 							"pickup": {
-								"timerIntervalSeconds": 10
+								"timerIntervalSeconds": 20
 							}
 						},
 						"tasks" : {
 							"dummy" : {
 								"class": "appenv.task.TaskDummyHandler",
-								"pickupSize" : 2,
-								"processBulkSize" : 2,
-								"concurrency" : 2,
-								"enabled" : true
+								"pickupSize" : 128,
+								"queueSize" : 256,
+								"processBulkSize" : 128,
+								"concurrency" : 10,
+								"enabled" : true,
+								"deleteOnSuccess" : true
 							},
 							"daily_run" : {
-								"class": "appenv.task.TaskDailyHandler"
+								"class": "appenv.task.TaskDailyHandler",
+								"deleteOnSuccess" : true
 							}
 						},
 						"database": "core",
 						"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?",
 						"updatePickedStatusSqlPrefix" : "update task_queue_process p straight_join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? where p.pickup_id=?",
-						"#updatePickedStatusSqlPrefix - for tsql/postgress" : "update tq set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? from task_queue_process p join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) where p.pickup_id=?",
-						"addPickedStatusSqlAddTaskTypeCondition" : true
 						
+						"readConcurrency" : 10,
+						"readLookupQueueSize" : 512,
+						"readBulkSize" : 64,
+						
+						"readTaskQueueSql" : "select task_type_id, ticket, task_state_id, env_type_id, process_at_ms, payload, insert_ms from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"readTaskTextFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_text f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)",
+						"readTaskNumFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_num f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)",
+						
+						"resultUpdateConcurrency" : 1,
+						"resultUpdateQueueSize" : 512,
+						"resultUpdateBulkSize" : 64,
+						
+						"deleteTaskFieldNumSql" : "delete q from common_tmp t join task_field_num q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"deleteTaskFieldTextSql" : "delete q from common_tmp t join task_field_text q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"deleteTaskErrorSql" : "delete q from common_tmp t join task_queue_error q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"deleteTaskQueueSql" : "delete q from common_tmp t join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
+						"deleteTaskQueueProcessSql" : "delete q from common_tmp t join task_queue_process q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)"						
 					}
 				}
 			}

@@ -14,14 +14,15 @@ import appenv.task.TaskType;
 import appenv.util.JsonUtils;
 
 
-public class TestTaskServer {
+public class TestTaskServerPostgres {
 
 	public static void main(String[] strs) throws Exception {
+		AppEnv.presetBootstrapResource("bootstrap-postgres.json");
 		AppEnv.presetAppConfName("test-task-server");
 		System.out.println(AppEnv.confName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
 		
-		//TaskQueueBackend taskQueueServer = AppEnv.taskQueueBackend();
+		TaskQueueBackend taskQueueServer = AppEnv.taskQueueBackend();
 
 		
 		

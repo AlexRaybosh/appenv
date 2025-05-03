@@ -1,5 +1,8 @@
 package appenv.task;
 
+import java.util.Collection;
+import java.util.List;
+
 import com.google.gson.JsonObject;
 
 public abstract class TaskHandler {
@@ -20,5 +23,6 @@ public abstract class TaskHandler {
 	public final TaskType getTaskType() {
 		return taskType;
 	}
+	public abstract void process(List<? extends TaskProcessingContext> tasks) throws Exception;
 	
 }

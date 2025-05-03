@@ -13,27 +13,38 @@ import appenv.task.TaskType;
 import appenv.util.JsonUtils;
 
 
-public class TestTaskClient {
+public class TestTaskClientPostgres {
 
 	public static void main(String[] strs) throws Exception {
+		AppEnv.presetBootstrapResource("bootstrap-postgres.json");
 		AppEnv.presetAppConfName("test-task-client");
 		System.out.println(AppEnv.confName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
+		
+		AppEnv.db().update("truncate table task_queue");
+		AppEnv.db().update("truncate table task_queue_error");
+		AppEnv.db().update("truncate table task_queue_process");
+		AppEnv.db().update("truncate table task_field_text");
+		AppEnv.db().update("truncate table task_field_num");
+		
+		
+		
 		
 		TaskQueueClient taskQueueClient = AppEnv.taskQueueClient();
 
 		String ticket=null;
 		
-		byte[] payload="hello world".getBytes();
+		
 		TaskType tt=TaskType.name("dummy");
 		List<TaskFuture> submits=new ArrayList<>();
 		long s=System.currentTimeMillis();
-		int N=2000000;
+		int N=500000;
 		
 		for (int i=0; i< N; ++i) {
 			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439
 			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}"); 
-			//JsonObject props=null; // 34K
+			byte[] payload=("hello world #"+i).getBytes();
+			
 			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
 			submits.add(f);
 		}
