@@ -34,6 +34,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import appenv.async.AsyncEngine;
 import appenv.db.ArrayRowHandler;
 import appenv.db.ConnectionWrap;
@@ -43,6 +46,7 @@ import appenv.db.LabelRowHandler;
 import appenv.db.ResultSetHandler;
 import appenv.db.StatementBlock;
 import appenv.db.TableName;
+import appenv.util.JsonUtils;
 import appenv.util.Utils;
 
 public class DBImpl extends DB {
@@ -297,7 +301,7 @@ public class DBImpl extends DB {
 			this.props.put("oracle.jdbc.TcpNoDelay", "true");
 		} else if (Pattern.matches("^jdbc:postgresql:.*", url)) {
 			driver="org.postgresql.Driver";
-			dialect=Dialect.POSTGRESS;
+			dialect=Dialect.POSTGRES;
 		} else {
 			throw new RuntimeException("Don't support url: " + url);
 		}
@@ -313,7 +317,7 @@ public class DBImpl extends DB {
 			case TDS:
 				intrinsics=getTDSIntristics();
 				break;
-			case POSTGRESS:
+			case POSTGRES:
 				intrinsics=getPostgressIntristics();
 				break;
 			default:
@@ -1121,7 +1125,7 @@ public class DBImpl extends DB {
 				return new TableName(findDefaultDatabase(), split[0], split[1]);
 			else
 				return new TableName(findDefaultDatabase(), null, split[0]);
-		case POSTGRESS:
+		case POSTGRES:
 			split=split(escape,tableName);
 			if (split.length==2)
 				return new TableName(null, split[0], split[1]);
@@ -1155,5 +1159,57 @@ public class DBImpl extends DB {
 		return versionComment;
 	}
 
+
+	@Override
+	public Boolean getConfDialectBooleanProperty(Boolean fallback, JsonObject conf, String... path) {
+		JsonElement e = getConfDialectJsonElement(conf, path);
+		Boolean ret=JsonUtils.getBoolean(e);
+		if (ret!=null) return ret;
+		return JsonUtils.getBoolean(fallback, conf, path);
+	}
+
+	@Override
+	public String getConfDialectStringProperty(String fallback, JsonObject conf, String... path) {
+		JsonElement e = getConfDialectJsonElement(conf, path);
+		String ret=JsonUtils.getString(e);
+		if (ret!=null) return ret;
+		return JsonUtils.getString(fallback, conf, path);
+	}
+	@Override
+	public Integer getConfDialectIntProperty(Integer fallback, JsonObject conf, String... path) {
+		JsonElement e = getConfDialectJsonElement(conf, path);
+		Integer ret=JsonUtils.getInteger(e);
+		if (ret!=null) return ret;
+		return JsonUtils.getInteger(fallback, conf, path);
+	}
+	@Override
+	public Number getConfDialectNumberProperty(Number fallback, JsonObject conf, String... path) {
+		JsonElement e = getConfDialectJsonElement(conf, path);
+		Number ret=JsonUtils.getNumber(e);
+		if (ret!=null) return ret;
+		return JsonUtils.getNumber(fallback, conf, path);
+	}
+	@Override
+	public JsonElement getConfDialectJsonElement(JsonObject conf, String... path) {
+		if (path==null || path.length==0) return JsonUtils.getJsonElement(conf);
+		String dialect;
+		Dialect d = getDialect();
+		switch (d) {
+		case DRIZZLE:
+		case MYSQL:
+		case DRIZZLE_MYSQL:
+			dialect="mysql";
+			break;
+		default:
+			dialect=d.toString().toLowerCase();
+		}
+		String[] newPath=new String[path.length+2];
+		newPath[0]="dialect";
+		newPath[1]=dialect;
+		for (int i=0;i<path.length;++i) newPath[i+2]=path[i];
+		JsonElement ret=JsonUtils.getJsonElement(conf, newPath);
+		if (ret!=null) return ret;
+		return JsonUtils.getJsonElement(conf, path);
+	}
 	
 }

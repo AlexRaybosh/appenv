@@ -29,26 +29,50 @@
 				"allowOverborrow": false
 			},
 			"core" : {
-				"urlParams" : {
-					"socketTimeout" : 60000
-				},
 				"maxCachedPreparedStatements" : 2000,
 				"maxConnections" : 30, 
 				"retryTimeoutSeconds" : 10.0,		
 				"overborrowPenaltySeconds" : 0.5,
-				"batchSize" : 1024,
-				"initStatements" : [
-					{
-						"onOpen" : "create temporary table common_tmp ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_bin",
-						"onClose": "drop temporary table if exists common_tmp",
-						"autoCommit" : false
+				"batchSize" : 1024,				
+				"dialect" : {
+					"mysql" : {
+						"urlParams" : {
+							"socketTimeout" : 60000
+						},
+						"initStatements" : [
+							{
+								"onOpen" : "create temporary table common_tmp ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_bin",
+								"onClose": "drop temporary table if exists common_tmp",
+								"autoCommit" : false
+							},
+							{
+								"onOpen" : "create temporary table common_tmp_1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_bin",
+								"onClose" : "drop temporary table if exists common_tmp_1",
+								"autoCommit" : false
+							}
+						]
 					},
-					{
-						"onOpen" : "create temporary table common_tmp_1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_bin",
-						"onClose" : "drop temporary table if exists common_tmp_1",
-						"autoCommit" : false
-					}
-				]				
+					"postgres" :{
+						"batchSize" : 1024,
+						"initStatements" : [
+							{"#onOpen" : "SET enable_hashjoin=off"},
+							{"onOpen" : "SET enable_seqscan=off"},
+							{"#onOpen" : "SET enable_mergejoin=off"},
+							{"#onOpen" : "SET join_collapse_limit=1"},
+							{
+								"onOpen" : "create temporary table common_tmp ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 text null, b1 BYTEA null, b2 BYTEA null) ON COMMIT DELETE ROWS",
+								"onClose": "drop table if exists common_tmp",
+								"autoCommit" : false
+							},
+							{
+								"onOpen" : "create temporary table common_tmp1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 text null, b1 BYTEA null, b2 BYTEA null) ON COMMIT DELETE ROWS",
+								"onClose": "drop table if exists common_tmp1",					
+								"autoCommit" : false
+							}
+						]	
+					}		
+					
+				}
 			}
 		}
 	}

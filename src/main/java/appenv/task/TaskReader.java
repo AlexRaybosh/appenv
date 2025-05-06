@@ -31,7 +31,7 @@ public class TaskReader {
 	String readTaskTextFieldSql;
 	String readTaskNumFieldSql;
 	
-	public TaskReader(DB db, JsonObject conf) throws Exception {
+	public TaskReader(final DB db, JsonObject conf) throws Exception {
 		this.conf=conf;
 		this.db=db;
 		//System.out.println(JsonUtils.prettyPrint(conf));
@@ -39,19 +39,19 @@ public class TaskReader {
 		asyncEngine=AsyncEngine.create();
 		taskReaderService=asyncEngine.register("reader", new ServiceBackend<TaskRecord>() {	
 			public void process(List<Request<TaskRecord>> bulk) throws Exception {read(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(1, conf, "readConcurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(64, conf, "readLookupQueueSize");}
-			public int getMaxBulkSize() {return JsonUtils.getInteger(16, conf, "readBulkSize");}
+			public int getMaxWorkers() {return db.getConfDialectIntProperty(1, conf, "readConcurrency");}
+			public int getMaxQueuedRequests() {return db.getConfDialectIntProperty(64, conf, "readLookupQueueSize");}
+			public int getMaxBulkSize() {return db.getConfDialectIntProperty(16, conf, "readBulkSize");}
 		});
 		
-		readTaskQueueSql="select task_type_id, ticket, task_state_id, env_type_id, process_at_ms, payload, insert_ms from common_tmp t join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
-		readTaskQueueSql=JsonUtils.getString(readTaskQueueSql, conf, "readTaskQueueSql");
+		readTaskQueueSql="select task_type_id, ticket, task_state_id, env_type_id, process_at_ms, payload, insert_ms, error_count from common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket)";
+		readTaskQueueSql=db.getConfDialectStringProperty(readTaskQueueSql, conf, "readTaskQueueSql");
 		
 		readTaskTextFieldSql="select task_type_id, ticket, field, value from common_tmp t join task_field_text f on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)";
-		readTaskTextFieldSql=JsonUtils.getString(readTaskTextFieldSql, conf, "readTaskTextFieldSql");
+		readTaskTextFieldSql=db.getConfDialectStringProperty(readTaskTextFieldSql, conf, "readTaskTextFieldSql");
 
 		readTaskNumFieldSql="select task_type_id, ticket, field, value from common_tmp t join task_field_num f on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)";
-		readTaskNumFieldSql=JsonUtils.getString(readTaskNumFieldSql, conf, "readTaskNumFieldSql");
+		readTaskNumFieldSql=db.getConfDialectStringProperty(readTaskNumFieldSql, conf, "readTaskNumFieldSql");
 	}
 
 	
@@ -80,11 +80,13 @@ public class TaskReader {
 					long processMs=Utils.toLong(row.get("process_at_ms"));
 					byte[] payload=Utils.toByteArray(row.get("payload"));
 					long insertMs=Utils.toLong(row.get("insert_ms"));
+					int errorCount=Utils.toInt(row.get("error_count"));
 					TaskRecord taskRecord=new TaskRecord(taskType, ticket, payload);
 					taskRecord.setTaskState(taskState);
 					taskRecord.setEnvId(envId);
 					taskRecord.setProcessAtMs(processMs);
 					taskRecord.setInsertedAtMs(insertMs);
+					taskRecord.setErrorCount(errorCount);
 					UnorderedRow<Object> key=new UnorderedRow<Object>(taskType.getId(), ticket);
 					keyToTaskRecord.put(key, taskRecord);
 				}

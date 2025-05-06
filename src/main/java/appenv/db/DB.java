@@ -14,6 +14,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 import appenv.db.impl.DBImpl;
 
 /**
@@ -24,7 +27,7 @@ import appenv.db.impl.DBImpl;
 public abstract class DB {
 	
 	public static enum Dialect {
-		MYSQL,	DRIZZLE_MYSQL, DRIZZLE, TDS, ORACLE, POSTGRESS, UNKNOWN
+		MYSQL,	DRIZZLE_MYSQL, DRIZZLE, TDS, ORACLE, POSTGRES, UNKNOWN
 	}
 	
 	
@@ -184,5 +187,9 @@ public abstract class DB {
 
 	public abstract void setOverborrowPenaltyTimeout(TimeUnit milliseconds, long overborrowPenaltyTimeoutMilliseconds);
 	
-	
+	public abstract String getConfDialectStringProperty(String fallback, JsonObject conf, String... path);
+	public abstract Integer getConfDialectIntProperty(Integer fallback, JsonObject conf, String... path);
+	public abstract Number getConfDialectNumberProperty(Number fallback, JsonObject conf, String... path);
+	public abstract Boolean getConfDialectBooleanProperty(Boolean fallback, JsonObject conf, String... path);
+	public abstract JsonElement getConfDialectJsonElement(JsonObject conf, String... path);
 }

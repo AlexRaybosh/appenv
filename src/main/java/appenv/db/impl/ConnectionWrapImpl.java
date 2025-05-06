@@ -803,7 +803,7 @@ public class ConnectionWrapImpl extends ConnectionWrap {
 					case TDS:
 						conId=trySingleSelectValue(st,"select @@SPID","unknown-"+cnt.incrementAndGet());
 						break;
-					case POSTGRESS:
+					case POSTGRES:
 						conId=trySingleSelectValue(st,"select pg_backend_pid()","unknown-"+cnt.incrementAndGet());
 						break;
 					case ORACLE:

@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS task_queue (
   process_at_ms BIGINT NOT NULL,
   payload BYTEA NULL,
   result BYTEA NULL,
+  error_count INT NOT NULL DEFAULT 0,
   submit_system_process_id BIGINT NULL,
   system_process_id BIGINT NULL,
   insert_ms BIGINT NOT NULL,
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS task_queue_error (
   ticket VARCHAR(128) NOT NULL,
   last_ms BIGINT NOT NULL,
   system_process_id BIGINT NOT NULL,
+  message VARCHAR(400) NULL COLLATE "C.utf8",
   error TEXT NULL COLLATE "C.utf8",
   PRIMARY KEY (id)
 );

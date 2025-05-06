@@ -17,37 +17,6 @@ import appenv.util.JsonUtils;
 import appenv.util.JsonUtils.JsonType;
 
 public class TaskRecord {
-
-	public final TaskState getTaskState() {
-		return taskState;
-	}
-	public final Integer getEnvId() {
-		return envId;
-	}
-	public final long getInsertedAtMs() {
-		return insertedAtMs;
-	}
-	@Override
-	public String toString() {
-		return "TaskRecord [taskType=" + taskType + ", ticket=" + ticket + ", processAtMs=" + processAtMs + ", payload="
-				+ Arrays.toString(payload) + ", fieldToText=" + fieldToText + ", fieldToNumber=" + fieldToNumber
-				+ ", taskState=" + taskState + ", envId=" + envId + "]";
-	}
-	@Override
-	public int hashCode() {
-		return Objects.hash(taskType, ticket);
-	}
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		TaskRecord other = (TaskRecord) obj;
-		return Objects.equals(taskType, other.taskType) && Objects.equals(ticket, other.ticket);
-	}
 	final TaskType taskType;
 	final String ticket;
 	private Long processAtMs;
@@ -57,6 +26,7 @@ public class TaskRecord {
 	private TaskState taskState;
 	private Integer envId;
 	private Long insertedAtMs;
+	private int errorCount;
 	
 	public TaskRecord(TaskType type, String ticket, byte[] payload, Map<String,Set<String>> fieldToText, Map<String,Set<Long>> fieldToNumber) {
 		this(type,ticket,payload);
@@ -145,7 +115,6 @@ public class TaskRecord {
 	public Map<String,Set<Long>> getFieldToNumber() {return fieldToNumber;}
 	public void setTaskState(TaskState taskState) {
 		this.taskState=taskState;
-		
 	}
 	public void setEnvId(int envId) {
 		this.envId=envId;
@@ -160,5 +129,41 @@ public class TaskRecord {
 	public void setPayload(byte[] payload) {
 		this.payload=payload;
 	}
-	
+	public void setErrorCount(int errorCount) {
+		this.errorCount=errorCount;
+		
+	}
+	public final int getErrorCount() {
+		return errorCount;
+	}
+	public final TaskState getTaskState() {
+		return taskState;
+	}
+	public final Integer getEnvId() {
+		return envId;
+	}
+	public final long getInsertedAtMs() {
+		return insertedAtMs;
+	}
+	@Override
+	public String toString() {
+		return "TaskRecord [taskType=" + taskType + ", ticket=" + ticket + ", processAtMs=" + processAtMs + ", payload="
+				+ Arrays.toString(payload) + ", fieldToText=" + fieldToText + ", fieldToNumber=" + fieldToNumber
+				+ ", taskState=" + taskState + ", envId=" + envId + "]";
+	}
+	@Override
+	public int hashCode() {
+		return Objects.hash(taskType, ticket);
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TaskRecord other = (TaskRecord) obj;
+		return Objects.equals(taskType, other.taskType) && Objects.equals(ticket, other.ticket);
+	}	
 }

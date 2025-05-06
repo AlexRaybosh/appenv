@@ -20,11 +20,6 @@ import appenv.db.ConnectionWrap;
 import appenv.db.DB;
 import appenv.db.StatementBlock;
 import appenv.env.AppEnv;
-import appenv.env.SubSystem;
-import appenv.task.TaskFuture;
-import appenv.task.TaskQueueClient;
-import appenv.task.TaskRecord;
-import appenv.task.TaskState;
 import appenv.util.JsonUtils;
 import appenv.util.UnorderedRow;
 
@@ -33,23 +28,22 @@ public class TaskInserter {
 	AsyncEngine asyncEngine=AsyncEngine.create();
 	Service<Void> lookupCreateService;
 	DB db;
-	String bulkExistentTaskLookupSql;
+	String existentTasksLookupSql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and t.t1=q.ticket)";
 
-	public TaskInserter(DB db, JsonObject c) throws Exception {
+	public TaskInserter(final DB db, JsonObject c) throws Exception {
 		this.conf=c;
 		this.db=db;
 
 		if (AppEnv.envTypeId()==null) throw new RuntimeException("Environment "+AppEnv.envTypeName()+"' is not registered in the DB");
 		lookupCreateService=asyncEngine.register("lookupCreateByName", new ServiceBackend<Void>() {	
 			public void process(List<Request<Void>> bulk) throws Exception {insert(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(1, conf, "insertConcurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(1, conf, "insertQueueSize");}
+			public int getMaxWorkers() {return db.getConfDialectIntProperty(1, conf, "insertConcurrency");}
+			public int getMaxQueuedRequests() {return db.getConfDialectIntProperty(1, conf, "insertQueueSize");}
 			public int getMaxBulkSize() {
-				return JsonUtils.getInteger(1, conf, "insertBulkSize");
+				return db.getConfDialectIntProperty(1, conf, "insertBulkSize");
 			}
 		});
-		bulkExistentTaskLookupSql="select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)";
-		bulkExistentTaskLookupSql=JsonUtils.getString(bulkExistentTaskLookupSql, conf, "bulkExistentTaskLookupSql");
+		existentTasksLookupSql=db.getConfDialectStringProperty(existentTasksLookupSql, conf, "existentTasksLookupSql");
 	}
 
 	protected void insert(List<Request<Void>> bulk) throws SQLException, InterruptedException {
@@ -111,7 +105,7 @@ public class TaskInserter {
 		}
 		System.out.println("------------------------------------------------------------------");
 		*/
-		for (Object[] row : cw.select(bulkExistentTaskLookupSql, true)) {
+		for (Object[] row : cw.select(existentTasksLookupSql, true)) {
 			//Number id = (Number)row[2];
 			UnorderedRow<Object> key=new UnorderedRow<>(((Number)row[0]).intValue(), row[1]);
 			List<TaskRecord> subList = ticketMap.remove(key);

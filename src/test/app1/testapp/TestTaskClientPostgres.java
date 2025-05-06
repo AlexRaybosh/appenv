@@ -20,13 +20,13 @@ public class TestTaskClientPostgres {
 		AppEnv.presetAppConfName("test-task-client");
 		System.out.println(AppEnv.confName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
-		
+
 		AppEnv.db().update("truncate table task_queue");
 		AppEnv.db().update("truncate table task_queue_error");
 		AppEnv.db().update("truncate table task_queue_process");
 		AppEnv.db().update("truncate table task_field_text");
 		AppEnv.db().update("truncate table task_field_num");
-		
+
 		
 		
 		
@@ -42,10 +42,10 @@ public class TestTaskClientPostgres {
 		
 		for (int i=0; i< N; ++i) {
 			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439
-			JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+", \"field2\" : [\"hello"+i+"\"]}"); 
-			byte[] payload=("hello world #"+i).getBytes();
+			JsonObject props=JsonUtils.parseJsonObject("{\"personId\": "+i+", \"email\" : [\"hello"+i+"@hello.com\"]}"); 
+			byte[] payload=("hello world email #"+i).getBytes();
 			
-			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props );
+			TaskFuture f=taskQueueClient.submit(tt, ticket, payload, props, AppEnv.getTime() );
 			submits.add(f);
 		}
 		for (TaskFuture f : submits) {
@@ -55,12 +55,6 @@ public class TestTaskClientPostgres {
 		double sec=(e-s)/1000.0;
 		double r=(N/sec);
 		System.out.println("rate "+r+" tasks/sec");
-		/*for (TaskFuture f : submits) {
-			System.out.print(f.getTicket());
-			System.out.println(" - "+f.get());
-		}*/
-		
-		
 		
 		//Thread.sleep(10000);
 		AppEnv.destroy();

@@ -101,29 +101,35 @@ public class Init {
 	}
 
 	private void initDB(String name, DB db) {
-		int maxCachedPreparedStatements=JsonUtils.getInteger(50, appConf.getConfiguration(),"database", name, "maxCachedPreparedStatements");
+		JsonObject dbConf = JsonUtils.getJsonObject(appConf.getConfiguration(),"database", name);
+		int maxCachedPreparedStatements=db.getConfDialectIntProperty(50, dbConf, "maxCachedPreparedStatements");
+		//int maxCachedPreparedStatements=JsonUtils.getInteger(50, appConf.getConfiguration(),"database", name, "maxCachedPreparedStatements");
 		db.setMaxCachedPreparedStatements(maxCachedPreparedStatements);
-		int maxConnections=JsonUtils.getInteger(5, appConf.getConfiguration(), "database", name, "maxConnections");
+		
+		int maxConnections=db.getConfDialectIntProperty(20, dbConf, "maxConnections");
+		//int maxConnections=JsonUtils.getInteger(5, appConf.getConfiguration(), "database", name, "maxConnections");
 		db.setMaxConnections(maxConnections);
 		
-		long retryTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(10, appConf.getConfiguration(),"database", name,  "retryTimeoutSeconds").doubleValue());
-		
+		long retryTimeoutMilliseconds=(long)(1000*db.getConfDialectNumberProperty(10, dbConf,  "retryTimeoutSeconds").doubleValue());
 		db.setRetryTimeout(TimeUnit.MILLISECONDS, retryTimeoutMilliseconds);
-		int transactionIsolation=JsonUtils.getInteger(Connection.TRANSACTION_READ_COMMITTED, appConf.getConfiguration(), "database", name, "transactionIsolation");
+		
+		int transactionIsolation=db.getConfDialectIntProperty(Connection.TRANSACTION_READ_COMMITTED, dbConf, "transactionIsolation");
 		db.setTransactionIsolation(transactionIsolation);
 		
-		int batchSize=JsonUtils.getInteger(128, appConf.getConfiguration(), "database", name, "batchSize");
+		int batchSize=db.getConfDialectIntProperty(256, dbConf, "batchSize");
 		db.setBatchSize(batchSize);
 		
-		long overborrowPenaltyTimeoutMilliseconds=(long)(1000*JsonUtils.getNumber(0.1, appConf.getConfiguration(),"database", name,  "overborrowPenaltySeconds").doubleValue());
+		long overborrowPenaltyTimeoutMilliseconds=(long)(1000*db.getConfDialectNumberProperty(0.1, dbConf,  "overborrowPenaltySeconds").doubleValue());
 		db.setOverborrowPenaltyTimeout(TimeUnit.MILLISECONDS, overborrowPenaltyTimeoutMilliseconds);
-		for (JsonElement e : JsonUtils.getJsonArrayIterable(appConf.getConfiguration(), "database", name, "initStatements")) {
+		
+		for (JsonElement e : JsonUtils.getJsonArrayIterable(db.getConfDialectJsonElement(dbConf, "initStatements"))) {
 			String onOpen=JsonUtils.getString(e, "onOpen");
 			String onClose=JsonUtils.getString(e, "onClose");
 			boolean autoCommit=JsonUtils.getBool(e, "autoCommit");
 			db.addInitSqlWithCleanup(autoCommit, onOpen, onClose);
 		}
-		boolean allowOverborrow=JsonUtils.getBoolean(true,appConf.getConfiguration(), "database", name, "allowOverborrow");
+		
+		boolean allowOverborrow=db.getConfDialectBooleanProperty(true, dbConf, "allowOverborrow");
 		db.allowOverborrow(allowOverborrow);
 	}
 

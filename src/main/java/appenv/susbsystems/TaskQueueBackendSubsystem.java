@@ -7,10 +7,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -31,6 +33,7 @@ import appenv.db.StatementBlock;
 import appenv.env.AppEnv;
 import appenv.env.SubSystem;
 import appenv.task.TaskHandler;
+import appenv.task.TaskInserter;
 import appenv.task.TaskProcessingContext;
 import appenv.task.TaskQueueBackend;
 import appenv.task.TaskReader;
@@ -59,6 +62,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		List<StatementBlock<Void>> statementBlocks=new ArrayList<>();
 		List<TaskRecord> childrenTasks=new ArrayList<>();
 		Long postponeMs;
+		Long lastMs;
 		
 		TaskProcessingEntry(TaskType taskType, Future<TaskRecord> f) {
 			this.taskType=taskType;
@@ -67,15 +71,18 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		public void success(byte[] result) {
 			processingState=TaskProcessingState.SUCCESS;
 			this.result=result;
+			lastMs=AppEnv.getTime();
 		}
 		public void postpone(Long newTimeMs) {
 			processingState=TaskProcessingState.POSTPONED;
 			postponeMs=newTimeMs;
+			lastMs=AppEnv.getTime();
 		}	
 		public void error(String msg, Throwable e) {
 			processingState=TaskProcessingState.ERROR;
 			errorMsg=msg;
 			error=e;
+			lastMs=AppEnv.getTime();
 		}
 		public void addTaskOnCommit(TaskRecord next) {
 			if (next!=null) childrenTasks.add(next);
@@ -105,12 +112,14 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		final AtomicInteger inProcessCount=new AtomicInteger();
 		volatile boolean canSignal=false;
 		final boolean isDeleteOnSuccess;
+		int maxErrorCount=10;
 		public TaskHandlerProcessor(TaskType taskType, TaskHandler taskHandler, JsonElement taskConf) {
 			this.taskType = taskType;
 			this.taskHandler = taskHandler;
 			this.taskConf=taskConf;
 			pickupSize=JsonUtils.getInteger(16, taskConf, "pickupSize");
 			queueSize=JsonUtils.getInteger(pickupSize, taskConf, "queueSize");
+			maxErrorCount=JsonUtils.getInteger(pickupSize, taskConf, "maxErrorCount");
 			isDeleteOnSuccess=JsonUtils.getBoolean(false, taskConf, "deleteOnSuccess");
 			processService=createTaskHandlerProcessingService(taskType, taskHandler, taskConf);
 		}
@@ -119,7 +128,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			final void done() {
 				int qcnt=inProcessCount.decrementAndGet();
 				int qavail=queueSize-qcnt;
-				if (qavail>0 && canSignal) {
+				if (qavail>0) {
 					//System.out.println("signal "+taskType.getName()+" with qcnt: "+qcnt+" qavail: "+qavail);
 					signalPickup();
 				}
@@ -128,15 +137,10 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			public void errored(Workload workload, Throwable e, Object[] args) {done();}
 			public void completed(Workload workload, Void ret, Object[] args) {done();}
 		};
-		
-		
+				
 		// ready to take a task for processing:
 		public void submit(Future<TaskRecord> f) throws InterruptedException {
-			//System.out.println(f);
-			//int qcnt=
 			inProcessCount.incrementAndGet();
-			//int qavail=queueSize-qcnt;
-			//System.out.println("submitted "+taskType.getName()+" with qcnt: "+qcnt+" qavail: "+qavail);
 			processService.callWithCallbackNoLimit(completionCallback, f);
 		}
 		public int calculatePickupSize() {
@@ -144,10 +148,6 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			int qavail=queueSize-qcnt;
 			if (qavail>0) return Math.min(qavail, pickupSize);
 			return 0;
-		}
-		public void hintFromPickup(int askedSize, int returnedSize) {
-			canSignal = returnedSize==askedSize;
-			
 		}
 		public boolean isDeleteOnSuccess() {
 			return isDeleteOnSuccess;
@@ -158,9 +158,9 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	AsyncEngine asyncEngine;
 	Service<Void> lookupCreateService;
 	String dbName;
-	String bulkExistentTaskLookupSql;
+
 	Map<TaskType, TaskHandlerProcessor> taskHandlerProcessors=new LinkedHashMap<>();
-	Future<Void> pickupLoopFuture;
+	List<Future<Void>> pickupLoopFutures=new ArrayList<>();
 	String pickupId=AppEnv.createUniqueKey();
 	String pickupTaskSql="select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?";
 	String processPickupSql;
@@ -169,12 +169,24 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	String pickedTicketsSql= "select task_type_id, ticket from task_queue_process p where pickup_id=?";
 	DB db;
 	TaskReader taskReader;
+	TaskInserter taskInserter;
 	Service<Void> taskResultUpdateService;
 	String deleteTaskFieldNumSql="delete q from common_tmp t join task_field_num q on (t.i1=q.task_type_id and t.t1=q.ticket)";
 	String deleteTaskFieldTextSql="delete q from common_tmp t join task_field_text q on (t.i1=q.task_type_id and t.t1=q.ticket)";
 	String deleteTaskErrorSql="delete q from common_tmp t join task_queue_error q on (t.i1=q.task_type_id and t.t1=q.ticket)";
 	String deleteTaskQueueSql="delete q from common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket)";
 	String deleteTaskQueueProcessSql="delete q from common_tmp t join task_queue_process q on (t.i1=q.task_type_id and t.t1=q.ticket)";
+
+	//i1  - task_type_id, t1 - ticket, i2 task_state_id, b1 - result, i3 - last_ms	
+	String updateTaskQueueStatusSql="update common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.result=t.b1, q.last_ms=t.i3";
+	//                                task_type_id=i1    ticket=t1      task_state_id=i2          error_count=i3        last_ms=i4       error_id=i5   error_message=t2 error=t3
+	String updateTaskQueueErrorSql="update common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.error_count=t.i3, q.last_ms=t.i4";
+	
+	//i1  - task_type_id, t1 - ticket, i2 task_state_id, i3 - process_at_ms, i4 - last_ms
+	String updateTaskQueuePostponeSql="update common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.process_at_ms=t.i3, q.last_ms=t.i4";
+	int transactionRetryCount=1;
+	
+	String movePickedToProcessSql="insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=t.t1)";
 	
 	@Override
 	public boolean init(boolean initial, JsonObject c) throws Exception {
@@ -183,21 +195,18 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		if (AppEnv.envTypeId()==null) throw new RuntimeException("Environment "+AppEnv.envTypeName()+"' is not registered in the DB");
 		if (AppEnv.systemProcessId()==null) throw new RuntimeException("TaskQueueBackendSubsystem requires processMaintenance subsystem enabled");
 		asyncEngine=AsyncEngine.create();
-		/*
-		lookupCreateService=asyncEngine.register("lookupCreateByName", new ServiceBackend<Void>() {	
-			public void process(List<Request<Void>> bulk) throws Exception {insert(bulk);}
-			public int getMaxWorkers() {return JsonUtils.getInteger(1, conf, "insertConcurrency");}
-			public int getMaxQueuedRequests() {return JsonUtils.getInteger(1, conf, "insertQueueSize");}
-			public int getMaxBulkSize() {
-				return JsonUtils.getInteger(1, conf, "insertBulkSize");
-			}
-		});*/
+
 		dbName=JsonUtils.getString("core", conf, "database");
 		db=AppEnv.db(dbName);
-		pickupTaskSql=JsonUtils.getString(pickupTaskSql, conf, "pickupTaskSql");
+		
+		pickupTaskSql=db.getConfDialectStringProperty(pickupTaskSql, conf, "pickupTaskSql");
+		
 		JsonObject allTasksConf = JsonUtils.getJsonObject(conf, "tasks");
 		if (allTasksConf==null) return false;
-		StringBuilder sbTp=new StringBuilder("insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id)\n");
+		//  task_queue_process (task_type_id, ticket, pickup_id, system_process_id)
+		StringBuilder sbTp=new StringBuilder("insert into common_tmp (i1, t1) "
+				+ "\n"
+				+ "select pickup.task_type_id, pickup.ticket from (\n");
 		StringBuilder sbTypeList=new StringBuilder("(");
 		boolean first=true;
 		
@@ -217,7 +226,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				taskHandlerProcessors.put(taskType, taskHandlerProcessor);
 				
 				if (!first) sbTp.append("\nunion all\n");
-				sbTp.append("select "+taskType.getId()+" as task_type_id, ticket, ? as pickup_id, "+AppEnv.systemProcessId()+" as system_process_id from (\n");
+				sbTp.append("select "+taskType.getId()+" as task_type_id, ticket from (\n");
 				sbTp.append(pickupTaskSql);
 				sbTp.append("\n) as t_"+taskType.getId());
 				
@@ -230,112 +239,137 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			}				
 		}
 		if (taskHandlerProcessors.isEmpty()) return false;
+		sbTp.append("\n) as pickup");
 		processPickupSql = sbTp.toString();
 		sbTypeList.append(")");
-		//updatePickupSql="update tq set tq.task_state_id="+TaskState.PROCESS.getStateId()+ ", tq.system_process_id="+AppEnv.systemProcessId()+", tq.last_ms=? "
-//					+ "from task_queue_process p join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) where p.pickup_id=?;
-		updatePickedStatusSqlPrefix=JsonUtils.getString(updatePickedStatusSqlPrefix, conf, "updatePickedStatusSqlPrefix");
+		
+		updatePickedStatusSqlPrefix=db.getConfDialectStringProperty(updatePickedStatusSqlPrefix, conf, "updatePickedStatusSqlPrefix");
 		updatePickupSql=updatePickedStatusSqlPrefix + (" and p.task_type_id in "+sbTypeList.toString() );
 		pickedTicketsSql+=" and task_type_id in "+sbTypeList.toString();
 		
 		taskReader = new TaskReader(db, conf);
+		taskInserter = new TaskInserter(db, conf);
 		taskResultUpdateService=createTaskResultUpdateService();
 
 		
-		deleteTaskFieldNumSql=JsonUtils.getString(deleteTaskFieldNumSql, conf, "deleteTaskFieldNumSql");
-		deleteTaskFieldTextSql=JsonUtils.getString(deleteTaskFieldTextSql, conf, "deleteTaskFieldTextSql");
-		deleteTaskErrorSql=JsonUtils.getString(deleteTaskErrorSql, conf, "deleteTaskErrorSql");
-		deleteTaskQueueSql=JsonUtils.getString(deleteTaskQueueSql, conf, "deleteTaskQueueSql");
-		deleteTaskQueueProcessSql=JsonUtils.getString(deleteTaskQueueProcessSql, conf, "deleteTaskQueueProcessSql");
-
-		pickupLoopFuture = AsyncEngine.getEngineExecutorService().submit(new Callable<Void>() {
-			public Void call() throws Exception {
-				for (;;) {
-					synchronized (lock) {
-						if (!pickupThreadReady) {
-							pickupThreadReady=true;
-							lock.notify();
+		deleteTaskFieldNumSql=db.getConfDialectStringProperty(deleteTaskFieldNumSql, conf, "deleteTaskFieldNumSql");
+		deleteTaskFieldTextSql=db.getConfDialectStringProperty(deleteTaskFieldTextSql, conf, "deleteTaskFieldTextSql");
+		deleteTaskErrorSql=db.getConfDialectStringProperty(deleteTaskErrorSql, conf, "deleteTaskErrorSql");
+		deleteTaskQueueSql=db.getConfDialectStringProperty(deleteTaskQueueSql, conf, "deleteTaskQueueSql");
+		deleteTaskQueueProcessSql=db.getConfDialectStringProperty(deleteTaskQueueProcessSql, conf, "deleteTaskQueueProcessSql");
+		updateTaskQueueStatusSql=db.getConfDialectStringProperty(updateTaskQueueStatusSql, conf, "updateTaskQueueStatusSql");
+		updateTaskQueuePostponeSql=db.getConfDialectStringProperty(updateTaskQueuePostponeSql, conf, "updateTaskQueuePostponeSql");
+		updateTaskQueueErrorSql=db.getConfDialectStringProperty(updateTaskQueueErrorSql, conf, "updateTaskQueueErrorSql");
+		movePickedToProcessSql=db.getConfDialectStringProperty(movePickedToProcessSql, conf, "movePickedToProcessSql");
+		transactionRetryCount=db.getConfDialectIntProperty(1, conf, "transactionRetryCount");
+		
+		int pickupConcurrency=db.getConfDialectIntProperty(1, conf, "pickupConcurrency");
+		
+		for (int i=0;i<pickupConcurrency;++i) {
+			Future<Void> pickupLoopFuture = AsyncEngine.getEngineExecutorService().submit(new Callable<Void>() {
+				Set<String> pickupIds=new LinkedHashSet<>();
+				public Void call() throws Exception {
+					for (;;) {
+						synchronized (lock) {
+							/*if (!pickupThreadReady) {
+								pickupThreadReady=true;
+								lock.notifyAll();
+							}
+							/*if (pickupSignalRaised==0)*/ 
+							lock.wait();
+							//if (pickupSignalRaised>0) --pickupSignalRaised;
 						}
-						if (!pickupSignalRaised) lock.wait();
-						pickupSignalRaised=false;
-					}
-					try {
-						while (pickup());
-					} catch (Exception e) {
-						e=Utils.proceedUnlessInterrupted(e);
-						AppEnv.logerr("Task pickup failed: ",e);
+						try {
+							while (pickup(pickupIds));
+						} catch (Exception e) {
+							e=Utils.proceedUnlessInterrupted(e);
+							AppEnv.logerr("Task pickup failed: ",e);
+						}
 					}
 				}
-			}
-		});
-		synchronized (lock) {
+			});
+			pickupLoopFutures.add(pickupLoopFuture);
+		}
+		/*synchronized (lock) {
 			while (!pickupThreadReady) {
 				lock.wait();
 			}
 		}
+		*/
 		return true;
 	}
-	boolean pickupThreadReady=false;
-	boolean pickupSignalRaised=false;
+	//boolean pickupThreadReady=false;
+	//int pickupSignalRaised=0;
 	Object lock=new Object();
 	private void signalPickup() {
 		synchronized (lock) {
-			lock.notify();
-			pickupSignalRaised=true;
+			lock.notifyAll();
+			//++pickupSignalRaised;
 		}
 	}	
 
 
-	private boolean pickup() throws InterruptedException, SQLException {
-		long time=AppEnv.getTime();
-		System.out.println("pickup: "+Utils.formatLocalDateTime(new Date(time)));
+	private boolean pickup(Set<String> pickupIds) throws InterruptedException, SQLException {
+		System.out.println("pickup: "+Utils.formatLocalDateTime(new Date()) + "\t"+Thread.currentThread());
 		if (taskHandlerProcessors.isEmpty()) return false;
-		List<Object> args=new ArrayList<>();
-		Map<TaskType, UnorderedRow<Integer>> taskTypeToAskSizeAndReturnSize=new HashMap<>();
-		String pickupId=AppEnv.createUniqueKey();
-		for (TaskHandlerProcessor h : taskHandlerProcessors.values()) {
+		boolean mightHaveMore=false;
+		boolean isEmptyPickup=false;
+		if (pickupIds.isEmpty()) {
+			String pickupId=AppEnv.createUniqueKey();
+			pickupIds.add(pickupId);
 			
-			args.add(pickupId);
-			args.add(AppEnv.envTypeId());
-			args.add(h.taskType.getId());
-			args.add(TaskState.INIT.getStateId());
-			args.add(time);			
-			int limit=h.calculatePickupSize();
-			args.add(limit);
-			taskTypeToAskSizeAndReturnSize.put(h.taskType, new UnorderedRow<>(limit,0));
-		}
-		List<Object[]> typeIdTicketList=db.commit(new StatementBlock<List<Object[]>>() {
-			public List<Object[]> execute(ConnectionWrap cw) throws SQLException, InterruptedException {
-				int cnt=cw.update(processPickupSql, true,args.toArray(new Object[0]));
-				if (cnt==0) return Collections.emptyList();
-				cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
-				return cw.select(pickedTicketsSql, true, pickupId);
+			List<Object> args=new ArrayList<>();
+			long time=AppEnv.getTime();
+			for (TaskHandlerProcessor h : taskHandlerProcessors.values()) {			
+				args.add(AppEnv.envTypeId());
+				args.add(h.taskType.getId());
+				args.add(TaskState.INIT.getStateId());
+				args.add(time);			
+				int limit=h.calculatePickupSize();
+				args.add(limit);
 			}
-			@Override
-			public boolean onError(ConnectionWrap cw, boolean willAttemptToRetry, SQLException ex, long start, long now) throws SQLException, InterruptedException {
-				//ex.printStackTrace();
-				return super.onError(cw, willAttemptToRetry, ex, start, now);
+			UnorderedRow<Integer> stats=db.commit(new StatementBlock<UnorderedRow<Integer>>() {
+				public UnorderedRow<Integer> execute(ConnectionWrap cw) throws SQLException, InterruptedException {
+					UnorderedRow<Integer> counts=new UnorderedRow<Integer>(0, 0);
+					if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+					int tmpPickupCounts=cw.update(processPickupSql, true,args.toArray(new Object[0]));
+					int movedToProcessCnt=tmpPickupCounts==0?0:cw.update(movePickedToProcessSql, true, pickupId, AppEnv.systemProcessId());
+					if (movedToProcessCnt>0) cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
+					if (tmpPickupCounts>0 && cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+					return new UnorderedRow<Integer>(tmpPickupCounts, movedToProcessCnt);
+				}
+				@Override
+				public boolean onError(ConnectionWrap cw, boolean willAttemptToRetry, SQLException ex, long start, long now) throws SQLException, InterruptedException {
+					//ex.printStackTrace();
+					return super.onError(cw, willAttemptToRetry, ex, start, now);
+				}
+			});
+			int tmpPickupCounts=stats.get()[0];
+			int movedToProcessCnt=stats.get()[1]; 
+			mightHaveMore=tmpPickupCounts>0;
+			isEmptyPickup = movedToProcessCnt==0;
+			System.out.println("pickup tmpPickupCounts: "+tmpPickupCounts+ ", movedToProcessCnt : "+movedToProcessCnt+" mightHaveMore: "+mightHaveMore+"\t"+Thread.currentThread());
+		}
+		while (!pickupIds.isEmpty()) {
+			String pickupId=pickupIds.iterator().next();
+			List<Object[]> typeIdTicketList=isEmptyPickup?Collections.emptyList(): db.select(pickedTicketsSql, true, pickupId);
+			if (!typeIdTicketList.isEmpty()) mightHaveMore=true;
+			for (Object[] row : typeIdTicketList) {
+				TaskType taskType=TaskType.id(Utils.toInteger(row[0]));
+				String ticket=Utils.toString(row[1]);
+				TaskHandlerProcessor hc = taskHandlerProcessors.get(taskType);
+				Future<TaskRecord> f = taskReader.lookup(taskType, ticket);
+				hc.submit(f);
 			}
-		});
-		for (Object[] row : typeIdTicketList) {
-			TaskType taskType=TaskType.id(Utils.toInteger(row[0]));
-			UnorderedRow<Integer> askSizeAndReturnSize = taskTypeToAskSizeAndReturnSize.get(taskType);
-			askSizeAndReturnSize.get()[1]=askSizeAndReturnSize.get()[1]+1;
-			String ticket=Utils.toString(row[1]);
-			TaskHandlerProcessor hc = taskHandlerProcessors.get(taskType);
-			Future<TaskRecord> f = taskReader.lookup(taskType, ticket);
-			hc.submit(f);
+			pickupIds.remove(pickupId);
 		}
-		for (TaskHandlerProcessor h : taskHandlerProcessors.values()) {
-			UnorderedRow<Integer> askSizeAndReturnSize = taskTypeToAskSizeAndReturnSize.get(h.taskType);			
-			h.hintFromPickup(askSizeAndReturnSize.get()[0], askSizeAndReturnSize.get()[1]);			
-		}
-		
-		return !typeIdTicketList.isEmpty();
+		return mightHaveMore;
 	}
 	@Override
 	public void destroy() {
-		if (pickupLoopFuture!=null) pickupLoopFuture.cancel(true);
+		for (Future<Void> pickupLoopFuture : pickupLoopFutures) {
+			pickupLoopFuture.cancel(true);	
+		} 
 	}
 
 	public final static String PICKUP="pickup";
@@ -396,19 +430,17 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				if (entries.isEmpty()) return;
 				try {
 					updateTaskResult(entries);
-				} catch (SQLException ex) {
+				} catch (Exception ex) {
+					
 					Map<TaskProcessingEntry, Exception> fatals=new HashMap<>();
-					if (entries.size()>1) for (TaskProcessingEntry e : entries) {
+					for (TaskProcessingEntry e : entries) {
 						try {
 							updateTaskResult(Collections.singletonList(e));
-						} catch (SQLException ex1) {
+						} catch (Exception ex1) {
+							ex1=Utils.proceedUnlessInterrupted(ex1);
 							fatals.put(e, ex1);
 							AppEnv.logerr("Failed on updating "+e.getTaskRecord().getTaskType().getName(), ex1);
 						}						
-					} else {
-						TaskProcessingEntry e = entries.get(0);
-						fatals.put(e, ex);
-						AppEnv.logerr("Failed on updating "+e.getTaskRecord().getTaskType().getName(), ex);						
 					}
 					if (!fatals.isEmpty()) tryUpdateFatals(fatals);
 				}
@@ -420,9 +452,28 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		});
 	}
 
-	protected void tryUpdateFatals(Map<TaskProcessingEntry, Exception> fatals) {
-		// TODO Auto-generated method stub
-		
+	protected void tryUpdateFatals(Map<TaskProcessingEntry, Exception> fatals) throws SQLException, InterruptedException {
+		for (Entry<TaskProcessingEntry, Exception> e : fatals.entrySet()) {
+			TaskProcessingEntry pe=e.getKey();
+			Exception ex = e.getValue();
+			Long errorId=AppEnv.newId("task_queue_error_id");
+			db.commit(new StatementBlock<Void>() {
+				@Override
+				public Void execute(ConnectionWrap cw) throws SQLException, InterruptedException {
+					cw.update("delete from task_queue_process where task_type_id=? and ticket=?", true, pe.getTaskRecord().getTaskTypeId(), pe.getTaskRecord().getTicket());
+					cw.update("update task_queue set task_state_id=?, last_ms=?  where task_type_id=? and ticket=?", true, TaskState.FATAL.getStateId(), AppEnv.getTime(), pe.getTaskRecord().getTaskTypeId(), pe.getTaskRecord().getTicket());
+					cw.update("insert into task_queue_error (id, task_type_id, ticket, last_ms, message, error, system_process_id) values (?, ?, ?, ?, ?, ?, ?)", true,
+							errorId,
+							pe.getTaskRecord().getTaskTypeId(), 
+							pe.getTaskRecord().getTicket(),
+							AppEnv.getTime(),
+							"Fatal failure to commit the result",
+							Utils.getStackTrace(ex),
+							AppEnv.systemProcessId());
+					return null;
+				}
+			});
+		}		
 	}
 	
 	private void updateTaskResult(List<TaskProcessingEntry> entries) throws SQLException, InterruptedException {
@@ -431,6 +482,11 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		final List<Object[]> successUpdateRows=new ArrayList<>();
 		final List<TaskRecord> childrenTasks=new ArrayList<>();
 		final List<StatementBlock<Void>> statementBlocks=new ArrayList<>();
+		
+		final List<Object[]> errorUpdateRows=new ArrayList<>();
+		final List<Object[]> taskErrorInsertRows=new ArrayList<>();
+		
+		boolean needSignal=false;
 		for (TaskProcessingEntry te : entries) {
 			TaskRecord taskRecord = te.getTaskRecord();
 			TaskType taskType = taskRecord.getTaskType();
@@ -443,27 +499,63 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				statementBlocks.addAll(te.statementBlocks);					
 				
 				continue;
-			}
-			if (te.processingState==TaskProcessingState.POSTPONED) {
+			} else if (te.processingState==TaskProcessingState.POSTPONED) {
 				Long timeMs=te.postponeMs==null?AppEnv.getTime():te.postponeMs;
+				needSignal=true;
 				postponedRows.add(new Object[] {taskType.getId(), taskRecord.getTicket(), TaskState.INIT.getStateId(), timeMs, AppEnv.getTime()});
 				continue;
 			} else {
 				// we got an error
+				int newStateId=(taskRecord.getErrorCount()>=taskHandlerProcessor.maxErrorCount-1)?TaskState.ERROR.getStateId():TaskState.INIT.getStateId();
+				if (newStateId==TaskState.INIT.getStateId())  needSignal=true;
+				Long errorId=AppEnv.newId("task_queue_error_id");
+				String msg=te.errorMsg;
+				String error=te.error==null?null:Utils.getStackTrace(te.error);
+				if (msg==null && te.error!=null) msg=te.error.getMessage();
+				//                                          i1                 t1                i2                     i3              i4       i5        t2    t3                  
+				errorUpdateRows.add(new Object[] {taskType.getId(), taskRecord.getTicket(), newStateId, taskRecord.getErrorCount()+1, te.lastMs, errorId, msg, error });
+				
 			}
 		}
 		db.commit(new StatementBlock<Void>() {
+			int errorCount=0;
 			@Override
 			public Void execute(ConnectionWrap cw) throws SQLException, InterruptedException {
-
 				deleteTasks(cw, deleteOnSuccessRows);
-					
+				updateTasks(cw, successUpdateRows);	
+				postponeTasks(cw, postponedRows);
+				errorTasks(cw, errorUpdateRows);
 				
+				if (!childrenTasks.isEmpty()) {
+					cw.update("delete from common_tmp", true);
+					taskInserter.insert(cw, childrenTasks);
+				}
+				for (StatementBlock<Void> sb : statementBlocks) {
+					cw.update("delete from common_tmp", true);
+					sb.execute(cw);
+				}				
+				
+				if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
 				return null;
 			}
-
-
+			@Override
+			public boolean onError(ConnectionWrap cw, boolean willAttemptToRetry, SQLException ex, long start, long now) throws SQLException, InterruptedException {
+				if (ex!=null && ex.getMessage()!=null && ex.getMessage().toLowerCase().contains("deadlock")) {
+					if (++errorCount < transactionRetryCount) return false;
+					else {
+						StringBuilder sb=new StringBuilder("Deadlock updating results for the following task/tickets:\n");
+						for (TaskProcessingEntry te : entries) {
+							TaskRecord taskRecord = te.getTaskRecord();
+							TaskType taskType = taskRecord.getTaskType();
+							sb.append("'"+taskType.getName()+"'/'"+taskRecord.getTicket()+"'\n");
+						}
+						AppEnv.logerr(sb.toString(), ex);
+					}
+				}
+				return super.onError(cw, willAttemptToRetry, ex, start, now);
+			}
 		});
+		if (needSignal) signalPickup();
 	}
 	private void deleteTasks(ConnectionWrap cw, List<Object[]> rows) throws SQLException, InterruptedException {
 		if (rows.isEmpty()) return;
@@ -473,7 +565,6 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			for (String sql : new String[] {deleteTaskFieldNumSql,deleteTaskFieldTextSql,deleteTaskErrorSql, deleteTaskQueueSql, deleteTaskQueueProcessSql}) {
 				cw.update(sql,true);						
 			}
-			if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
 		} else {
 			for (Object[] row : rows) {
 				cw.update("delete from task_field_num where task_type_id=? and ticket=?", true, row);
@@ -483,6 +574,51 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				cw.update("delete from task_queue_process where task_type_id=? and ticket=?", true, row);						
 			}
 		}
+	}	
+	protected void updateTasks(ConnectionWrap cw, List<Object[]> rows) throws SQLException, InterruptedException {
+		if (rows.isEmpty()) return;
+		else if (rows.size()>2) {
+			cw.update("delete from common_tmp", true);
+			// i1  - task_type_id, t1 - ticket, i2 task_state_id, b1 - result, i3 - last_ms
+			cw.batchInsert("insert into common_tmp (i1, t1, i2, b1, i3) values (?, ?, ?, ?, ?)",rows);
+			cw.update(updateTaskQueueStatusSql, true);	
+			cw.update(deleteTaskQueueProcessSql,true);
+		} else {
+			for (Object[] row : rows) {
+				//                                                    [2]       [3]        [4]                    [0]          [1]
+				cw.update("update task_queue set task_state_id=?, result=?, last_ms=?   where task_type_id=? and ticket=?", true, row[2], row[3], row[4], row[0], row[1]);
+				cw.update("delete from task_queue_process where task_type_id=? and ticket=?", true, row[0], row[1]);
+			}
+		}
 	}
+	protected void postponeTasks(ConnectionWrap cw, List<Object[]> rows) throws SQLException, InterruptedException {
+		if (rows.isEmpty()) return;
+		else if (rows.size()>2) {
+			cw.update("delete from common_tmp", true);
+			// i1  - task_type_id, t1 - ticket, i2 task_state_id, i3 - process_at_ms, i4 - last_ms
+			cw.batchInsert("insert into common_tmp (i1, t1, i2, i3, i4) values (?, ?, ?, ?, ?)",rows);
+			int cnt=cw.update(updateTaskQueuePostponeSql, true);	
+			cnt=cw.update(deleteTaskQueueProcessSql,true);
+			//i1  - task_type_id, t1 - ticket, i2 task_state_id, i3 - process_at_ms, i4 - last_ms			
+		} else {
+			for (Object[] row : rows) {
+				//                                            [2]              [3]        [4]                    [0]          [1]
+				int cnt=cw.update("update task_queue set task_state_id=?, process_at_ms=?, last_ms=?   where task_type_id=? and ticket=?", true, row[2], row[3], row[4], row[0], row[1]);
+				cnt=cw.update("delete from task_queue_process where task_type_id=? and ticket=?", true, row[0], row[1]);
+				//System.out.println("dropped "+row[0]+" - " + row[1]);
+			}
+		}
+	}
+	protected void errorTasks(ConnectionWrap cw, List<Object[]> rows) throws SQLException, InterruptedException {
+		cw.update("delete from common_tmp", true);
+		cw.batchInsert("insert into common_tmp (i1, t1, i2, i3, i4, i5, t2, t3) values (?, ?, ?, ?, ?, ?, ?, ?)",rows);
+		cw.update(updateTaskQueueErrorSql, true);//ERROR: integer out of range
+		cw.update("insert into task_queue_error (id, task_type_id, ticket, last_ms, message, error, system_process_id) select i5, i1, t1, i4, t2, t3, ? from common_tmp", true, AppEnv.systemProcessId());
+		cw.update(deleteTaskQueueProcessSql,true);
+	}
+
+
+
+
 
 }
