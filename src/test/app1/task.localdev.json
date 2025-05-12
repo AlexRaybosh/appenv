@@ -60,7 +60,9 @@
 						"dialect" : {
 							"mysql" : {
 								"pickupConcurrency" : 10,
-								"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?",
+								"pickupSingleMove" :true,
+								"#pickupSingleMove comment" : "don't split picking from task_queue into common_tmp, and moving into task_queue_process from common_tmp, use a single sql, wont work with postgres", 
+								"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ? for update",
 								"movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=cast(t.t1 as char))",
 								
 								"updatePickedStatusSqlPrefix" : "update task_queue_process p straight_join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? where p.pickup_id=?",
@@ -78,9 +80,9 @@
 								"updateTaskQueueErrorSql" : "update common_tmp t straight_join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket) set q.task_state_id=t.i2, q.error_count=t.i3, q.last_ms=t.i4"								
 							},
 							"postgres" : {
-								"pickupConcurrency" : 10,
+								"pickupConcurrency" : 2,
 								"transactionRetryCount" : 20,
-								"pickupTaskSql" : "select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?",
+								"pickupTaskSql" : "select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ? for update",
 								"#pickupTaskSql" : "select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ? for update",
 								"movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=t.t1) ON CONFLICT DO NOTHING",
 								
@@ -102,8 +104,8 @@
 						
 						"readConcurrency" : 10,
 						"readLookupQueueSize" : 512,
-						"readBulkSize" : 64,
-						"resultUpdateConcurrency" : 10,
+						"readBulkSize" : 128,
+						"resultUpdateConcurrency" : 2,
 						"resultUpdateQueueSize" : 1024,
 						"resultUpdateBulkSize" : 128
 					}

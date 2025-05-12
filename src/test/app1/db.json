@@ -56,7 +56,7 @@
 						"batchSize" : 1024,
 						"initStatements" : [
 							{"#onOpen" : "SET enable_hashjoin=off"},
-							{"onOpen" : "SET enable_seqscan=off"},
+							{"#onOpen" : "SET enable_seqscan=off"},
 							{"#onOpen" : "SET enable_mergejoin=off"},
 							{"#onOpen" : "SET join_collapse_limit=1"},
 							{
