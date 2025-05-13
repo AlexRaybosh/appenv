@@ -37,6 +37,10 @@
 						"timers": {
 							"pickup": {
 								"timerIntervalSeconds": 20
+							},
+							"resurrect" : {
+								"timerIntervalSeconds": 10,
+								"comment" : "find PROCESS tasks, from the dead processes, flip them back to life"
 							}
 						},
 						"tasks" : {
@@ -57,6 +61,7 @@
 						},
 						"database": "core",
 						"pickupConcurrency" : 2,
+						"selectDeadProcessTasksSql" : "select ticket, error_count, system_process_id from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and not exists (select 1 from system_process p where p.is_active=1 and q.system_process_id=p.id) limit 1024",
 						"dialect" : {
 							"mysql" : {
 								"pickupConcurrency" : 10,

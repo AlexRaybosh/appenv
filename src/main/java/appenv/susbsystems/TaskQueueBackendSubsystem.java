@@ -29,6 +29,7 @@ import appenv.async.Request;
 import appenv.async.Service;
 import appenv.async.ServiceBackend;
 import appenv.async.Workload;
+import appenv.db.BatchInputIterator;
 import appenv.db.ConnectionWrap;
 import appenv.db.DB;
 import appenv.db.DB.Dialect;
@@ -200,6 +201,9 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	 */
 	boolean pickupSingleMove=false;
 	String pickupSingleMoveSql;
+	String selectDeadProcessTasksSql="select ticket, error_count, system_process_id "
+			+ "from task_queue q where env_type_id=? and task_type_id=? and and task_state_id=? "
+			+ "and not exists (select 1 from system_process p where p.is_active=1 and q.system_process_id=p.id)";
 	
 	@Override
 	public boolean init(boolean initial, JsonObject c) throws Exception {
@@ -291,6 +295,12 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		updateTaskQueuePostponeSql=db.getConfDialectStringProperty(updateTaskQueuePostponeSql, conf, "updateTaskQueuePostponeSql");
 		updateTaskQueueErrorSql=db.getConfDialectStringProperty(updateTaskQueueErrorSql, conf, "updateTaskQueueErrorSql");
 		movePickedToProcessSql=db.getConfDialectStringProperty(movePickedToProcessSql, conf, "movePickedToProcessSql");
+		
+		selectDeadProcessTasksSql=db.getConfDialectStringProperty(selectDeadProcessTasksSql, conf, "selectDeadProcessTasksSql");
+		
+		//if (db.getDialect()!=Dialect.ORACLE && db.getDialect()!=Dialect.TDS) selectDeadProcessTasksSql+=" limit "+db.getConfDialectIntProperty(1024, conf, "selectDeadProcessTasksLimit");
+		
+		
 		transactionRetryCount=db.getConfDialectIntProperty(1, conf, "transactionRetryCount");
 		
 		int pickupConcurrency=db.getConfDialectIntProperty(1, conf, "pickupConcurrency");
@@ -426,15 +436,6 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		for (Future<Void> pickupLoopFuture : pickupLoopFutures) {
 			pickupLoopFuture.cancel(true);	
 		} 
-	}
-
-	public final static String PICKUP="pickup";
-	@Override
-	public boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception {
-		if (PICKUP.equals(tickName)) {
-			signalPickup();
-		}
-		return true;
 	}
 
 
@@ -676,9 +677,10 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		}
 	}
 	protected void errorTasks(ConnectionWrap cw, List<Object[]> rows) throws SQLException, InterruptedException {
+		if (rows==null || rows.isEmpty()) return;
 		cw.update("delete from common_tmp", true);
 		cw.batchInsert("insert into common_tmp (i1, t1, i2, i3, i4, i5, t2, t3) values (?, ?, ?, ?, ?, ?, ?, ?)",rows);
-		cw.update(updateTaskQueueErrorSql, true);//ERROR: integer out of range
+		cw.update(updateTaskQueueErrorSql, true);
 		cw.update("insert into task_queue_error (id, task_type_id, ticket, last_ms, message, error, system_process_id) select i5, i1, t1, i4, t2, t3, ? from common_tmp", true, AppEnv.systemProcessId());
 		cw.update(deleteTaskQueueProcessSql,true);
 	}
@@ -694,7 +696,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		synchronized (listeners) {
 			for (TaskProcessingEntry entry : entries) {
 				TaskRecord record = entry.getTaskRecord();
-				if ( record.getTaskState()==TaskState.ERROR || record.getTaskState()==TaskState.SUCCESS || record.getTaskState()==TaskState.FATAL) {
+				if (record.getTaskState()==TaskState.ERROR || record.getTaskState()==TaskState.SUCCESS || record.getTaskState()==TaskState.FATAL) {
 					for (TaskCompletionListener l : listeners) {
 						try {
 							l.onTaskCompleted(record, entry.result);	
@@ -705,6 +707,60 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 					}
 				}
 			}			
+		}
+	}
+	
+	public final static String PICKUP="pickup";
+	public final static String RESURRECT="resurrect";
+	 
+	@Override
+	public boolean tick(long startAfterMs, long intervalMs, String tickName, Long lastRun) throws Exception {
+		if (PICKUP.equals(tickName)) {
+			signalPickup();
+		} else if (RESURRECT.equals(tickName)) {
+			resurrect();
+		}
+		return true;
+	}
+	
+	private void resurrect() throws SQLException, InterruptedException {
+		for (TaskHandlerProcessor taskHandlerProcessor : taskHandlerProcessors.values()) { 
+			for (;;) {
+				int cnt=db.commit(new StatementBlock<Integer>() {
+					@Override
+					public Integer execute(ConnectionWrap cw) throws SQLException, InterruptedException {
+						final List<Object[]> errorUpdateRows=new ArrayList<>();	
+						TaskType taskType=taskHandlerProcessor.taskType;
+						for (Object[] row : cw.select(selectDeadProcessTasksSql, true, 
+								AppEnv.envTypeId(),  taskType.getId(), TaskState.PROCESS.getStateId())) 
+						{
+							TaskHandlerProcessor taskHandlerProcessor = taskHandlerProcessors.get(taskType);
+							int errorCount=Utils.toInt(row[1]);
+							int newStateId=0;
+							String msg=null, error=null;
+							if (errorCount>=taskHandlerProcessor.maxErrorCount) {
+								newStateId=TaskState.ERROR.getStateId();
+								msg="skip task resurrection";
+								error="Skip task resurrection from defunct process, with system process id: "+row[2]+" and error_count: "+errorCount;			
+							} else {
+								newStateId=TaskState.INIT.getStateId();
+								++errorCount;
+								msg="task resurrected";
+								error="Resurrected task from defunct process, with system process id: "+row[2];
+							}
+							Long errorId=AppEnv.newId("task_queue_error_id");	
+							errorUpdateRows.add(new Object[] {taskType.getId(), row[0], newStateId, errorCount, AppEnv.getTime(), errorId, msg, error });	
+						
+						}
+						
+						errorTasks(cw, errorUpdateRows);
+						if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+						return errorUpdateRows.size();
+					}
+					
+				});
+				if (cnt==0) break;
+			}
 		}
 	}
 }
