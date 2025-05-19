@@ -93,7 +93,7 @@ create table if not exists system_process (
     dead_ms  bigint null,
     primary key (id)
 );
-create index process_dead_idx on system_process(is_active, dead_ms);
+create index process_dead_idx on system_process(is_active, dead_ms, id);
 create index process_cluster_idx on system_process(cluster_member_id, is_active);
 alter table system_process add constraint system_process_cluster_member_fk foreign key (cluster_member_id) references cluster_member(id);
 alter table system_process add constraint system_process_app_conf_fk foreign key (app_conf_id) references app_conf(id);

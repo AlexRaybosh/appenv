@@ -55,7 +55,7 @@ create table task_queue_p5 partition of task_queue for values with (modulus 8, r
 create table task_queue_p6 partition of task_queue for values with (modulus 8, remainder 6);
 create table task_queue_p7 partition of task_queue for values with (modulus 8, remainder 7);
 
-CREATE INDEX task_pickup_idx ON task_queue (env_type_id, task_type_id, task_state_id, process_at_ms);
+CREATE INDEX task_pickup_idx ON task_queue (env_type_id, task_type_id, task_state_id, process_at_ms) include (ticket);
 
 
 CREATE TABLE IF NOT EXISTS task_queue_error (

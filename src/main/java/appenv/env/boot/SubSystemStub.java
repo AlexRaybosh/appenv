@@ -85,7 +85,7 @@ public class SubSystemStub {
 		}
 		
 	}
-	public final void destroy() {
+	public final void destroy() throws InterruptedException {
 		for (Timer p : timersMap.values()) {
 			p.destroy();
 		}

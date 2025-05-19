@@ -53,5 +53,23 @@
 				}
 			}
 		]
+	},
+	
+		"defaults" : {
+		"subsystems" : {
+			"initConcurrency" : 1,
+			"entries" : {
+			}
+		},
+		"database" : {
+			"dumbdownPostgresNoSeqScan" : {
+				"because" : "Postgres sucks",
+				"properties" : {
+					"dburl"	:	"jdbc:postgresql://localhost:5432/postgres?sslmode=disable",
+					"dbuser":	"postgres",
+					"dbpasswordBootstrapPropertyName" : "dbpassword"
+				}
+			}		
+		}
 	}
 }

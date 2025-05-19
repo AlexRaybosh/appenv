@@ -125,8 +125,12 @@ public class Init {
 		for (JsonElement e : JsonUtils.getJsonArrayIterable(db.getConfDialectJsonElement(dbConf, "initStatements"))) {
 			String onOpen=JsonUtils.getString(e, "onOpen");
 			String onClose=JsonUtils.getString(e, "onClose");
-			boolean autoCommit=JsonUtils.getBool(e, "autoCommit");
-			db.addInitSqlWithCleanup(autoCommit, onOpen, onClose);
+			Boolean autoCommit=JsonUtils.getBoolean(e, "autoCommit");
+			if (autoCommit!=null) db.addInitSqlWithCleanup(autoCommit, onOpen, onClose);
+			else {
+				db.addInitSqlWithCleanup(true, onOpen, onClose);
+				db.addInitSqlWithCleanup(false, onOpen, onClose);
+			}
 		}
 		
 		boolean allowOverborrow=db.getConfDialectBooleanProperty(true, dbConf, "allowOverborrow");

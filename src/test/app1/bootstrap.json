@@ -57,14 +57,6 @@
 				}
 			}
 		]
-	},
-
-	
-	"defaults" : {
-		"subsystems" : {
-			"initConcurrency" : 1,
-			"entries" : {
-			}
-		}
 	}
+
 }

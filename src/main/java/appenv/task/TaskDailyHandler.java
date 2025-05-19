@@ -1,7 +1,7 @@
 package appenv.task;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TaskDailyHandler extends TaskHandler {
 
@@ -12,9 +12,11 @@ public class TaskDailyHandler extends TaskHandler {
 
 
 	@Override
-	public void process(List<? extends TaskProcessingContext> pl) {
-		// TODO Auto-generated method stub
-		
+	public void process(List<? extends TaskProcessingContext> tasks) throws InterruptedException {
+		for (TaskProcessingContext c : tasks) {
+			TaskRecord r = c.getTaskRecord();
+			c.success(("processed #"+cnt.incrementAndGet()).getBytes());
+		}
 	}
-
+	AtomicLong cnt=new AtomicLong();
 }

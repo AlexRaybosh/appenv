@@ -28,7 +28,7 @@ public class AsyncEngineImpl extends AsyncEngine implements Workload {
 	static ExecutorService executorService=Executors.newCachedThreadPool(new ThreadFactory() {
 		   @Override
 		   public Thread newThread(Runnable r) {
-		      Thread thread =  new Thread(r, "test.async-engine-thread-"+tn.incrementAndGet());
+		      Thread thread =  new Thread(r, "async-engine-thread-"+tn.incrementAndGet());
 		      thread.setDaemon(true);
 		      return thread;
 		   }

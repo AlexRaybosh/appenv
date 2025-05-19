@@ -21,12 +21,12 @@ public class TestTaskClientPostgres {
 		System.out.println(AppEnv.confName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
 
-		AppEnv.db().update("truncate table task_queue");
+		/*AppEnv.db().update("truncate table task_queue");
 		AppEnv.db().update("truncate table task_queue_error");
 		AppEnv.db().update("truncate table task_queue_process");
 		AppEnv.db().update("truncate table task_field_text");
 		AppEnv.db().update("truncate table task_field_num");
-
+*/
 		
 		
 		
@@ -35,10 +35,10 @@ public class TestTaskClientPostgres {
 		String ticket=null;
 		
 		
-		TaskType tt=TaskType.name("dummy");
+		TaskType tt=TaskType.name("daily_run");
 		List<TaskFuture> submits=new ArrayList<>();
 		long s=System.currentTimeMillis();
-		int N=500000;
+		int N=5000000;
 		
 		for (int i=0; i< N; ++i) {
 			//JsonObject props=JsonUtils.parseJsonObject("{\"field1\": "+i+"}"); // 18439

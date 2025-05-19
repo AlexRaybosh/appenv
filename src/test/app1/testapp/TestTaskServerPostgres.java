@@ -1,11 +1,13 @@
 package testapp;
 
 
+import appenv.async.AsyncEngine;
 import appenv.env.AppEnv;
 import appenv.task.TaskCompletionListener;
 import appenv.task.TaskQueueBackend;
 import appenv.task.TaskRecord;
 import appenv.util.JsonUtils;
+import appenv.util.Utils;
 
 
 
@@ -34,7 +36,7 @@ public class TestTaskServerPostgres {
 		long lastReportTime, startTime;
 		int totalCount=0;
 		int intervalCount=0;
-		int EXCPECTED_COUNT=100000;
+		int EXCPECTED_COUNT=200000;
 		long REPORT_INTERVAL=10000;
 		
 		public synchronized void onTaskCompleted(TaskRecord taskRecord, byte[] result) {
@@ -56,12 +58,14 @@ public class TestTaskServerPostgres {
 				// report total
 				double sec=(now-startTime)/1000.0;
 				System.out.println("COMPLETED PROCESSING "+totalCount+" TASKS IN "+sec+" SECONDS WITH RATE "+(totalCount/sec)+ " TASKS/SECOND");
+			//	System.exit(0);
 			}
 		}
 
 		private void init() {
 			init=true;
-			startTime=lastReportTime=System.currentTimeMillis();		
+			startTime=lastReportTime=System.currentTimeMillis();
+			AsyncEngine.getEngineExecutorService().execute(()->{try {Utils.system("bash","-c", "cd & curl -x '' 'http://localhost:65535/stream?showargs&maxargs=100' >postgres.log 2>postgres.curl.err");} catch (Exception e) {}});
 		}	
 	}
 }

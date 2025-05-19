@@ -23,7 +23,7 @@ public abstract class SubSystem {
 	 * @throws Exception
 	 */
 	public abstract boolean init(boolean initial, JsonObject conf) throws Exception;
-	public abstract void destroy();
+	public abstract void destroy() throws InterruptedException;
 	public boolean onTick(long start, long interval, String tickName, Long lastRun) {
 		try {
 			return tick(start, interval, tickName, lastRun);
