@@ -239,13 +239,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	int transactionRetryCount=1;
 	
 	String movePickedToProcessSql="insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=t.t1)";
-	/*
-		"pickupSingleMove" :true,
-		"#pickupSingleMove comment" : "don't split picking from task_queue into common_tmp, and moving into task_queue_process from common_tmp, use a single sql, wont work with postgres", 
-		"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?",
-		"movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=cast(t.t1 as char))",
-		
-	 */
+
 	boolean pickupSingleMove=false;
 	String pickupSingleMoveSql;
 	String estimateMoreSql;
@@ -257,6 +251,9 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	String errorToInitSql="update (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 and error_count<? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=0, q.system_process_id=null, q.last_ms=?";
 	String errorToFatalSql="update (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 and error_count>=? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=4, q.system_process_id=null, q.last_ms=?";
 
+	String pickupTasksTemplateWithLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ? for update skip locked";
+	String pickupTasksTemplateWithNoLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?";
+	
 	
 	@Override
 	public boolean init(boolean initial, JsonObject c) throws Exception {
