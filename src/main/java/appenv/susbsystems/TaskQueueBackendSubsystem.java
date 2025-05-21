@@ -4,10 +4,8 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -29,7 +27,6 @@ import appenv.async.Request;
 import appenv.async.Service;
 import appenv.async.ServiceBackend;
 import appenv.async.Workload;
-import appenv.db.BatchInputIterator;
 import appenv.db.ConnectionWrap;
 import appenv.db.DB;
 import appenv.db.DB.Dialect;
@@ -211,8 +208,6 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	Map<TaskType, TaskHandlerProcessor> taskHandlerProcessors=new LinkedHashMap<>();
 	List<Future<Void>> pickupLoopFutures=new ArrayList<>();
 	String pickupId=AppEnv.createUniqueKey();
-	String pickupTaskSql="select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ?";
-	String hasMoreTasksSql="select ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit 1";
 	
 	String processPickupSql;
 	String updatePickupSql;
@@ -238,7 +233,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	String updateTaskQueuePostponeSql="update common_tmp t join task_queue q on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.process_at_ms=t.i3, q.last_ms=t.i4";
 	int transactionRetryCount=1;
 	
-	String movePickedToProcessSql="insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=t.t1)";
+	String movePickedToProcessSql="insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp";
 
 	boolean pickupSingleMove=false;
 	String pickupSingleMoveSql;
@@ -253,7 +248,8 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 
 	String pickupTasksTemplateWithLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ? for update skip locked";
 	String pickupTasksTemplateWithNoLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?";
-	
+	String deleteErrorProcessRecordsSql="delete p from (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 limit 1024) as t join task_queue_process p on (t.task_type_id=p.task_type_id and t.ticket=p.ticket)";
+	String readTasksForCleanupSql="select task_type_id, ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? limit 1024";
 	
 	@Override
 	public boolean init(boolean initial, JsonObject c) throws Exception {
@@ -268,8 +264,11 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		String taskQueueScanDatabaseName=db.getConfDialectStringProperty("core", conf, "taskQueueScanDatabase");
 		taskQueueScanDB="core".equals(taskQueueScanDatabaseName)?db:AppEnv.db(taskQueueScanDatabaseName);
 		
-		pickupTaskSql=db.getConfDialectStringProperty(pickupTaskSql, conf, "pickupTaskSql");
-		hasMoreTasksSql=db.getConfDialectStringProperty(hasMoreTasksSql, conf, "hasMoreTasksSql");
+		//pickupTaskSql=db.getConfDialectStringProperty(pickupTaskSql, conf, "pickupTaskSql");
+		//hasMoreTasksSql=db.getConfDialectStringProperty(hasMoreTasksSql, conf, "hasMoreTasksSql");
+		
+		pickupTasksTemplateWithLockSql=db.getConfDialectStringProperty(pickupTasksTemplateWithLockSql, conf, "pickupTasksTemplateWithLockSql");
+		pickupTasksTemplateWithNoLockSql=db.getConfDialectStringProperty(pickupTasksTemplateWithNoLockSql, conf, "pickupTasksTemplateWithNoLockSql");
 		
 		
 		JsonObject allTasksConf = JsonUtils.getJsonObject(conf, "tasks");
@@ -277,12 +276,12 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 		// env_type_id, task_type_id,error_count,last_ms
 		errorToInitSql=db.getConfDialectStringProperty(errorToInitSql, conf, "errorToInitSql");
 		errorToFatalSql=db.getConfDialectStringProperty(errorToFatalSql, conf, "errorToFatalSql");
+		deleteErrorProcessRecordsSql=db.getConfDialectStringProperty(deleteErrorProcessRecordsSql, conf, "deleteErrorProcessRecordsSql");
+		readTasksForCleanupSql=db.getConfDialectStringProperty(readTasksForCleanupSql, conf, "readTasksForCleanupSql");
 		
+		pickupSingleMove=db.getConfDialectBooleanProperty(true, conf, "pickupSingleMove");
 		
-		
-		pickupSingleMove=db.getConfDialectBooleanProperty(db.getDialect()!=Dialect.POSTGRES, conf, "pickupSingleMove");
-		
-		StringBuilder sbTp=new StringBuilder("insert into common_tmp (i1, t1) "
+		StringBuilder sbMoveToTemp=new StringBuilder("insert into common_tmp (i1, t1) "
 				+ "\n"
 				+ "select pickup.task_type_id, pickup.ticket from (\n");
 		StringBuilder sbTypeList=new StringBuilder("(");
@@ -308,21 +307,32 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				taskHandlerProcessors.put(taskType, taskHandlerProcessor);
 				
 				if (!first) {
-					sbTp.append("\nunion all\n");
+					sbMoveToTemp.append("\nunion all\n");
 					singleMove.append("\nunion all\n");
 					estimateMore.append("\nunion all\n");
 				}
-				sbTp.append("select "+taskType.getId()+" as task_type_id, ticket from (\n");
-				sbTp.append(pickupTaskSql);
-				sbTp.append("\n) as t_"+taskType.getId());
+				/*
+				 * 	String pickupTasksTemplateWithLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ? for update skip locked";
+	String pickupTasksTemplateWithNoLockSql="select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?";
+	"pickupTaskSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=q.task_type_id and p.ticket=q.ticket) limit ? for update",
+				 */
+				
+				String pickupTaskLockSql=pickupTasksTemplateWithLockSql.replace("$ENV_TYPE_ID$", ""+AppEnv.envTypeId()).replace("$TASK_TYPE_ID$", ""+taskType.getId()).replace("$TASK_STATE_ID$", ""+TaskState.INIT.getStateId());
+				String pickupTaskNoLockSql=pickupTasksTemplateWithNoLockSql.replace("$ENV_TYPE_ID$", ""+AppEnv.envTypeId()).replace("$TASK_TYPE_ID$", ""+taskType.getId()).replace("$TASK_STATE_ID$", ""+TaskState.INIT.getStateId());
+				
+				sbMoveToTemp.append("select "+taskType.getId()+" as task_type_id, ticket from (\n");
+				sbMoveToTemp.append(pickupTaskLockSql);
+				sbMoveToTemp.append("\n) as t_"+taskType.getId());
 				
 				singleMove.append("select "+taskType.getId()+" as task_type_id, ticket from (\n");
-				singleMove.append(pickupTaskSql);
+				singleMove.append(pickupTaskLockSql);
 				singleMove.append("\n) as t_"+taskType.getId());
 
-				estimateMore.append("select 1 from (\n");
-				estimateMore.append(hasMoreTasksSql);
-				estimateMore.append("\n) as t_"+taskType.getId());
+				estimateMore.append("select "+taskType.getId()+" as task_type_id, ticket from (\n");
+				estimateMore.append(pickupTaskNoLockSql);
+				estimateMore.append("\n) as t_"+taskType.getId());				
+				
+
 				
 				
 				if (!first) sbTypeList.append(",");
@@ -334,8 +344,8 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			}				
 		}
 		if (taskHandlerProcessors.isEmpty()) return false;
-		sbTp.append("\n) as pickup");
-		processPickupSql = sbTp.toString();
+		sbMoveToTemp.append("\n) as pickup");
+		processPickupSql = sbMoveToTemp.toString();
 		singleMove.append("\n) as pickup");
 		pickupSingleMoveSql = singleMove.toString();
 		estimateMore.append("\n) as pickup");
@@ -434,9 +444,6 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				args.add(AppEnv.systemProcessId());
 			}
 			for (TaskHandlerProcessor h : taskHandlerProcessors.values()) {			
-				args.add(AppEnv.envTypeId());
-				args.add(h.taskType.getId());
-				args.add(TaskState.INIT.getStateId());
 				args.add(time);			
 				int limit=h.calculatePickupSize();
 				args.add(limit);
@@ -451,10 +458,12 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 					} else {
 						if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
 						int tmpPickupCounts=cw.update(processPickupSql, true,args.toArray(new Object[0]));
-						int movedToProcessCnt=tmpPickupCounts==0?0:cw.update(movePickedToProcessSql, true, pickupId, AppEnv.systemProcessId());
-						if (movedToProcessCnt>0) cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
-						if (tmpPickupCounts>0 && cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
-						return new UnorderedRow<Integer>(tmpPickupCounts, movedToProcessCnt);
+						if (tmpPickupCounts>0) {
+							int movedToProcessCnt=cw.update(movePickedToProcessSql, true, pickupId, AppEnv.systemProcessId());
+							cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
+							if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+							return new UnorderedRow<Integer>(tmpPickupCounts, movedToProcessCnt);
+						} else return new UnorderedRow<Integer>(0, 0); 
 					}
 				}
 				@Override
@@ -482,7 +491,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				signalPickup();
 			}
 			if (tmpPickupCounts>0 && movedToProcessCnt==0) {
-				System.out.println("OVERSATURATION!!!!");
+				//System.err.println("OVERSATURATION!!!!");
 			}
 			//System.out.println("picked: "+tmpPickupCounts+" - "+movedToProcessCnt+" "+Utils.formatLocalDateTime(new Date()) + "\t"+Thread.currentThread());
 		}
@@ -506,10 +515,8 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			long time=AppEnv.getTime();
 			for (TaskHandlerProcessor h : taskHandlerProcessors.values()) {			
 				int limit=h.calculatePickupSize();
-				estimateArgs.add(AppEnv.envTypeId());
-				estimateArgs.add(h.taskType.getId());
-				estimateArgs.add(TaskState.INIT.getStateId());
-				estimateArgs.add(time);			
+				estimateArgs.add(time);
+				estimateArgs.add(1); // limit	
 				if (limit>0) limitSet=true;
 			}
 			if (limitSet) {
@@ -585,7 +592,7 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 			for (TaskProcessingEntry c : pl) {
 				if (!c.answered) {
 					c.error(error);
-					taskResultUpdateService.call(asyncEngine, c);
+					//taskResultUpdateService.call(asyncEngine, c);
 				}
 			}
 		}
@@ -861,7 +868,30 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 	}
 	
 	private void cleanup() throws SQLException, InterruptedException {
-		// TODO Auto-generated method stub
+		for (TaskHandlerProcessor taskHandlerProcessor : taskHandlerProcessors.values()) { 
+			if (taskHandlerProcessor.errorTTLSeconds!=null) cleanup(taskHandlerProcessor.taskType, TaskState.ERROR, taskHandlerProcessor.errorTTLSeconds.doubleValue());
+			if (taskHandlerProcessor.fatalTTLSeconds!=null) cleanup(taskHandlerProcessor.taskType, TaskState.FATAL, taskHandlerProcessor.fatalTTLSeconds.doubleValue());
+			if (taskHandlerProcessor.successTTLSeconds!=null) cleanup(taskHandlerProcessor.taskType, TaskState.SUCCESS, taskHandlerProcessor.fatalTTLSeconds.doubleValue());
+		}
+	}
+	private void cleanup(TaskType taskType, TaskState state, double ttlSec) throws SQLException, InterruptedException {
+		//"select task_type_id, ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? limit 1024"
+		try {
+			long time=AppEnv.getTime()-(long)(1000*ttlSec);
+			for (;;) {
+				int cnt=db.commit(new StatementBlock<Integer>() {
+					public Integer execute(ConnectionWrap cw) throws SQLException, InterruptedException {
+						List<Object[]> deleteList = cw.select(readTasksForCleanupSql, true, AppEnv.envTypeId(), taskType.getId(), state.getStateId(), time);
+						deleteTasks(cw, deleteList);
+						if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+						return deleteList.size();
+					}
+				});
+				if (cnt==0) break;
+			}
+		} catch (SQLException e) {
+			AppEnv.logerr("Failed to cleanup "+taskType+" with state: "+state, e);
+		}
 		
 	}
 	private void revive() throws SQLException, InterruptedException {
@@ -885,6 +915,12 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				if (cnt==0) break;
 			}
 		}
+		for (TaskHandlerProcessor taskHandlerProcessor : taskHandlerProcessors.values()) { 
+			for (;;) {
+				int cnt=db.update(deleteErrorProcessRecordsSql, true, AppEnv.envTypeId(),  taskHandlerProcessor.taskType.getId());
+				if (cnt==0) break;
+			}
+		}		
 		for (TaskHandlerProcessor taskHandlerProcessor : taskHandlerProcessors.values()) { 
 			for (;;) {
 				int cnt=db.update(errorToInitSql, true, AppEnv.envTypeId(),  taskHandlerProcessor.taskType.getId(), taskHandlerProcessor.maxErrorCount, AppEnv.getTime());

@@ -19,18 +19,18 @@ public class TestTaskClientMySQL {
 		AppEnv.presetAppConfName("test-task-client");
 		System.out.println(AppEnv.confName());
 		System.out.println(JsonUtils.prettyPrint(AppEnv.conf()));
-		
+	/*	
 		AppEnv.db().update("truncate table task_queue");
 		AppEnv.db().update("truncate table task_queue_error");
 		AppEnv.db().update("truncate table task_queue_process");
 		AppEnv.db().update("truncate table task_field_text");
 		AppEnv.db().update("truncate table task_field_num");
-		
+		*/
 		TaskQueueClient taskQueueClient = AppEnv.taskQueueClient();
 
 		String ticket=null;
 		
-		TaskType tt=TaskType.name("dummy");
+		TaskType tt=TaskType.name("daily_run");
 		List<TaskFuture> submits=new ArrayList<>();
 		long s=System.currentTimeMillis();
 		int N=500000;
