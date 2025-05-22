@@ -453,17 +453,15 @@ public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBac
 				public UnorderedRow<Integer> execute(ConnectionWrap cw) throws SQLException, InterruptedException {
 					if (pickupSingleMove) {
 						int cnt=cw.update(pickupSingleMoveSql, true,args.toArray(new Object[0]));
-						if (cnt>0) cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
-						return new UnorderedRow<Integer>(cnt, cnt);
+						int cnt1=cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
+						return new UnorderedRow<Integer>(cnt, cnt1);
 					} else {
 						if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
 						int tmpPickupCounts=cw.update(processPickupSql, true,args.toArray(new Object[0]));
-						if (tmpPickupCounts>0) {
-							int movedToProcessCnt=cw.update(movePickedToProcessSql, true, pickupId, AppEnv.systemProcessId());
-							cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
-							if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
-							return new UnorderedRow<Integer>(tmpPickupCounts, movedToProcessCnt);
-						} else return new UnorderedRow<Integer>(0, 0); 
+						int movedToProcessCnt=cw.update(movePickedToProcessSql, true, pickupId, AppEnv.systemProcessId());
+						cw.update(updatePickupSql, true, TaskState.PROCESS.getStateId(), AppEnv.systemProcessId(), AppEnv.getTime(), pickupId);
+						if (cw.needsTempTableCleanup()) cw.update("delete from common_tmp", true);
+						return new UnorderedRow<Integer>(tmpPickupCounts, movedToProcessCnt);
 					}
 				}
 				@Override

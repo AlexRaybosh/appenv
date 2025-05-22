@@ -14,7 +14,7 @@
 						"insertRetryOnErrorCount" : 3,
 						"dialect" : {
 							"mysql" : {						
-								"existentTasksLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)"
+								"existentTasksLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and t.t1=q.ticket)"
 							},
 							"postgres" : {
 								"insertConcurrency" : 15,
@@ -71,34 +71,35 @@
 						},
 						"database": "core",
 						"pickupConcurrency" : 2,
-						"selectDeadProcessTasksSql" : "select ticket, error_count, system_process_id from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and not exists (select 1 from system_process p where p.is_active=1 and q.system_process_id=p.id) limit 1024 for update",
 						"dialect" : {
 							"mysql" : {
 								"pickupConcurrency" : 10,
 								"pickupSingleMove" : true,
-								"#movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=cast(t.t1 as char))",
+								"#movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp t where not exists (select 1 from task_queue_process p where p.task_type_id=t.i1 and p.ticket=t.t1)",
 								
-								"pickupTasksTemplateWithLockSql"   : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ? for update",
-								"pickupTasksTemplateWithNoLockSql" : "select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
+								"pickupTasksTemplateWithLockSql"   : "select ticket from (select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? for update) as q where not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
+								"pickupTasksTemplateWithNoLockSql" : "select ticket from (select ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=?) as q where not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
 								"readTasksForCleanupSql" : "select task_type_id, ticket from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? limit 1024",
 								
-								"updatePickedStatusSqlPrefix" : "update task_queue_process p straight_join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? where p.pickup_id=?",
-								"readTaskQueueSql" : "select task_type_id, ticket, task_state_id, env_type_id, process_at_ms, payload, insert_ms, error_count from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"readTaskTextFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_text f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)",
-								"readTaskNumFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_num f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and cast(t.t1 as char)=f.ticket)",
-								"deleteTaskFieldNumSql" : "delete q from common_tmp t join task_field_num q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"deleteTaskFieldTextSql" : "delete q from common_tmp t join task_field_text q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"deleteTaskErrorSql" : "delete q from common_tmp t join task_queue_error q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"deleteTaskQueueSql" : "delete q from common_tmp t join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"deleteTaskQueueProcessSql" : "delete q from common_tmp t join task_queue_process q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"existentTasksLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket)",
-								"updateTaskQueueStatusSql" : "update common_tmp t straight_join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket) set q.task_state_id=t.i2, q.result=t.b1, q.last_ms=t.i3",
-								"updateTaskQueuePostponeSql" : "update common_tmp t straight_join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket) set q.task_state_id=t.i2, q.process_at_ms=t.i3, q.last_ms=t.i4",
-								"updateTaskQueueErrorSql" : "update common_tmp t straight_join task_queue q on (t.i1=q.task_type_id and cast(t.t1 as char)=q.ticket) set q.task_state_id=t.i2, q.error_count=t.i3, q.last_ms=t.i4",
+								"updatePickedStatusSqlPrefix" : "update task_queue_process p FORCE INDEX(task_queue_process_pickup_idx) straight_join task_queue tq on (p.task_type_id=tq.task_type_id and p.ticket=tq.ticket) set tq.task_state_id=?, tq.system_process_id=?, tq.last_ms=? where p.pickup_id=?",
+								"readTaskQueueSql" : "select task_type_id, ticket, task_state_id, env_type_id, process_at_ms, payload, insert_ms, error_count from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"readTaskTextFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_text f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and t.t1=f.ticket)",
+								"readTaskNumFieldSql" : "select task_type_id, ticket, field, value from common_tmp t straight_join task_field_num f FORCE INDEX (PRIMARY) on (t.i1=f.task_type_id and t.t1=f.ticket)",
+								"deleteTaskFieldNumSql" : "delete q from common_tmp t straight_join task_field_num q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"deleteTaskFieldTextSql" : "delete q from common_tmp t straight_join task_field_text q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"deleteTaskErrorSql" : "delete q from common_tmp t straight_join task_queue_error q on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"deleteTaskQueueSql" : "delete q from common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"deleteTaskQueueProcessSql" : "delete q from common_tmp t straight_join task_queue_process q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket)",
+								"existentTasksLookupSql" : "select t.i1 as task_type_id, t.t1 as ticket from common_tmp t where exists (select 1 from task_queue q where t.i1=q.task_type_id and t.t1=q.ticket)",
+								"updateTaskQueueStatusSql" : "update common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.result=t.b1, q.last_ms=t.i3",
+								"updateTaskQueuePostponeSql" : "update common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.process_at_ms=t.i3, q.last_ms=t.i4",
+								"updateTaskQueueErrorSql" : "update common_tmp t straight_join task_queue q FORCE INDEX (PRIMARY) on (t.i1=q.task_type_id and t.t1=q.ticket) set q.task_state_id=t.i2, q.error_count=t.i3, q.last_ms=t.i4",
 								
-								"deleteErrorProcessRecordsSql" : "delete p from (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 limit 1024) as t join task_queue_process p on (t.task_type_id=p.task_type_id and t.ticket=p.ticket)",
-								"errorToInitSql" : "update (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 and error_count<? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=0, q.system_process_id=null, q.last_ms=?",
-								"errorToFatalSql" : "update (select task_type_id, ticket  from task_queue where env_type_id=? and task_type_id=? and task_state_id=3 and error_count>=? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=4, q.system_process_id=null, q.last_ms=?"
+								"selectDeadProcessTasksSql" : "select ticket, error_count, system_process_id from task_queue q FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=? and not exists (select 1 from system_process p where p.is_active=1 and q.system_process_id=p.id) limit 1024 for update",
+								
+								"deleteErrorProcessRecordsSql" : "delete p from (select task_type_id, ticket  from task_queue FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=3 limit 1024) as t join task_queue_process p on (t.task_type_id=p.task_type_id and t.ticket=p.ticket)",
+								"errorToInitSql" : "update (select task_type_id, ticket  from task_queue FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=3 and error_count<? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=0, q.system_process_id=null, q.last_ms=?",
+								"errorToFatalSql" : "update (select task_type_id, ticket  from task_queue FORCE INDEX (task_pickup_idx) where env_type_id=? and task_type_id=? and task_state_id=3 and error_count>=? limit 1024 for update) as t straight_join task_queue q on (t.task_type_id=q.task_type_id and t.ticket=q.ticket) set q.task_state_id=4, q.system_process_id=null, q.last_ms=?"
 							},
 							"postgres" : {
 								"#taskQueueScanDatabase" : "dumbdownPostgresNoSeqScan",
@@ -107,8 +108,9 @@
 								"pickupSingleMove" :true,
 								"movePickedToProcessSql" : "insert into task_queue_process (task_type_id, ticket, pickup_id, system_process_id) select i1, t1, ? as pickup_id, ? as system_process_id from common_tmp",
 								
-								"pickupTasksTemplateWithLockSql"   : "select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ? for update skip locked",
-								"pickupTasksTemplateWithNoLockSql" : "select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? and not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
+								"pickupTasksTemplateWithLockSql"   : "select ticket from (select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=? for update skip locked) as q where not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
+								"pickupTasksTemplateWithNoLockSql" : "select ticket from (select ticket from task_queue q where env_type_id=$ENV_TYPE_ID$ and task_type_id=$TASK_TYPE_ID$ and task_state_id=$TASK_STATE_ID$ and process_at_ms<=?) as q where not exists (select 1 from task_queue_process p where p.task_type_id=$TASK_TYPE_ID$ and p.ticket=q.ticket) limit ?",
+
 								"readTasksForCleanupSql" : "select task_type_id, ticket from task_queue q where env_type_id=? and task_type_id=? and task_state_id=? and process_at_ms<=? limit 1024",
 								
 								"updatePickedStatusSqlPrefix" : "update task_queue tq set task_state_id=?, system_process_id=?, last_ms=? from task_queue_process p where p.task_type_id=tq.task_type_id and p.ticket=tq.ticket and p.pickup_id=?",
@@ -136,7 +138,7 @@
 						"readConcurrency" : 10,
 						"readLookupQueueSize" : 512,
 						"readBulkSize" : 128,
-						"resultUpdateConcurrency" : 2,
+						"resultUpdateConcurrency" : 10,
 						"resultUpdateQueueSize" : 1024,
 						"resultUpdateBulkSize" : 128
 					}

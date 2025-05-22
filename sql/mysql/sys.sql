@@ -97,7 +97,7 @@ create table if not exists system_process (
     index process_cluster_idx (cluster_member_id, is_active),
     constraint system_process_cluster_member_fk foreign key (cluster_member_id) references cluster_member(id),
     constraint system_process_app_conf_fk foreign key (app_conf_id) references app_conf(id)
-) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 
 
@@ -108,6 +108,6 @@ create table if not exists word_dictionary (
     last_ms bigint null,
     primary key (id),
     unique index word_dictionary_idx (word)
-) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 

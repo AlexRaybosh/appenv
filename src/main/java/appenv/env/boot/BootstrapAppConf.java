@@ -101,25 +101,26 @@ public class BootstrapAppConf {
 
 
 	void init(AppScope appScope) throws Exception {
+		JsonObject appenvLibConfig = readBuildinJsonConfig("appenv-lib-defaults.json");
 		String bootstrap="bootstrap.json";
-		JsonObject buildInConfig=null;
+		JsonObject bootstrapConfig=null;
 		if (appScope.getPresetBootstrapResource()!=null) {
 			bootstrap=appScope.getPresetBootstrapResource();
-			buildInConfig=readBuildinJsonConfig(bootstrap);
-			if (buildInConfig==null) {
+			bootstrapConfig=readBuildinJsonConfig(bootstrap);
+			if (bootstrapConfig==null) {
 				//maybe its a resource directory
 				if (!bootstrap.endsWith("/")) bootstrap+="/bootstrap.json";
 				else bootstrap+="bootstrap.json";
-				buildInConfig=readBuildinJsonConfig(bootstrap);
-				if (buildInConfig==null) {
+				bootstrapConfig=readBuildinJsonConfig(bootstrap);
+				if (bootstrapConfig==null) {
 					// maybe it a file
 					bootstrap=appScope.getPresetBootstrapResource();
-					buildInConfig=readBuildinJsonConfigFile(bootstrap);
-					if (buildInConfig==null) {
+					bootstrapConfig=readBuildinJsonConfigFile(bootstrap);
+					if (bootstrapConfig==null) {
 						if (!bootstrap.endsWith("/")) bootstrap+="/bootstrap.json";
 						else bootstrap+="bootstrap.json";
-						buildInConfig=readBuildinJsonConfigFile(bootstrap);
-						if (buildInConfig==null) throw new RuntimeException("Failed to locate any reasonable bootstrap, last tried: "+bootstrap);
+						bootstrapConfig=readBuildinJsonConfigFile(bootstrap);
+						if (bootstrapConfig==null) throw new RuntimeException("Failed to locate any reasonable bootstrap, last tried: "+bootstrap);
 					}
 					bootstrapIsFile=true;
 				}
@@ -127,7 +128,7 @@ public class BootstrapAppConf {
 				
 			}
 		} else {
-			buildInConfig=readBuildinJsonConfig(bootstrap);
+			bootstrapConfig=readBuildinJsonConfig(bootstrap);
 			
 		}
 		int dirEnd=bootstrap.lastIndexOf('/');	
@@ -135,19 +136,19 @@ public class BootstrapAppConf {
 			lookupDir=bootstrap.substring(0, dirEnd);
 		}
 
-		shell = JsonUtils.getString(buildInConfig, "bootstrap", "shell");
+		shell = JsonUtils.getString(bootstrapConfig, "bootstrap", "shell");
 		if (Utils.isEmpty(shell)) shell="/bin/bash";
 
-		String overrideConfNameFromEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "overrideConfNameFromEnvironmentVariable");
-		String overrideEnvTypeFromEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "overrideEnvTypeFromEnvironmentVariable");
+		String overrideConfNameFromEnvironmentVariable=JsonUtils.getString(bootstrapConfig, "bootstrap", "overrideConfNameFromEnvironmentVariable");
+		String overrideEnvTypeFromEnvironmentVariable=JsonUtils.getString(bootstrapConfig, "bootstrap", "overrideEnvTypeFromEnvironmentVariable");
 		if (!Utils.isEmpty(overrideEnvTypeFromEnvironmentVariable)) {
 			String v=System.getenv(overrideEnvTypeFromEnvironmentVariable);
 			if (!Utils.isEmpty(v)) envType=v;
 		}
 		
-		String abortOnErrorIfShellEval=JsonUtils.getString(buildInConfig, "bootstrap", "abortOnErrorIfShellEval");
-		logErrors=JsonUtils.getBool(buildInConfig, "bootstrap","logErrors");
-		abortOnError=JsonUtils.getBool(buildInConfig, "bootstrap","abortOnError");
+		String abortOnErrorIfShellEval=JsonUtils.getString(bootstrapConfig, "bootstrap", "abortOnErrorIfShellEval");
+		logErrors=JsonUtils.getBool(bootstrapConfig, "bootstrap","logErrors");
+		abortOnError=JsonUtils.getBool(bootstrapConfig, "bootstrap","abortOnError");
 
 		if (!abortOnError && !Utils.isEmpty(abortOnErrorIfShellEval)) {
 			abortOnError=checkShellEval(shell,abortOnErrorIfShellEval);
@@ -155,7 +156,7 @@ public class BootstrapAppConf {
 		
 		
 		BootEntry entry=null;
-		for (JsonElement bobj : JsonUtils.getJsonArrayIterable(buildInConfig, "bootstrap", "entries")) {
+		for (JsonElement bobj : JsonUtils.getJsonArrayIterable(bootstrapConfig, "bootstrap", "entries")) {
 			entry=BootEntry.create(bobj);
 			if (entry==null) continue;
 			try {
@@ -186,31 +187,31 @@ public class BootstrapAppConf {
 			if (appConfName==null) appConfName="undefined";		
 		}
 
-		if (buildInConfig==null) {
+		if (bootstrapConfig==null) {
 			throw new RuntimeException("./boostrap.json resource/file on classpath or cwd is missing or unreasonable empty");
 		}
 		if (properties==null) properties=new Properties();
 
 		Map<String,JsonObject> allConfigs=new LinkedHashMap<>();
-		//allConfigs.put("bootstrap", buildInConfig);
-		add("bootstrap", allConfigs, buildInConfig);
+		//allConfigs.put("bootstrap", bootstrapConfig);
+		add("bootstrap", allConfigs, bootstrapConfig);
 /*		for (Entry<String, JsonObject> e : allConfigs.entrySet()) {
 			System.out.println(e.getKey()+JsonUtils.prettyPrint(e.getValue())+"\n\n");
 		}
 */		
 		JsonObject[] arr=allConfigs.values().<JsonObject>toArray(new JsonObject[allConfigs.size()]);
-		buildInConfig=JsonUtils.combine(arr);
+		bootstrapConfig=JsonUtils.combine(arr);
 		
-		JsonObject myConf = JsonUtils.getJsonObject(buildInConfig, "appConf", appConfName);
-		JsonObject defConf= JsonUtils.getJsonObject(buildInConfig, "defaults");
-		JsonObject realConf=JsonUtils.combine(new JsonObject(), defConf, myConf);
+		JsonObject myConf = JsonUtils.getJsonObject(bootstrapConfig, "appConf", appConfName);
+		JsonObject defConf= JsonUtils.getJsonObject(bootstrapConfig, "defaults");
+		JsonObject realConf=JsonUtils.combine(appenvLibConfig, defConf, myConf);
 		
 		dburl=(String)properties.get("dburl");
 		dbuser=(String)properties.get("dbuser");
 		dbpassword=(String)properties.get("dbpassword");
 		
 		
-		String disableDatabaseEnvironmentVariable=JsonUtils.getString(buildInConfig, "bootstrap", "disableDatabaseEnvironmentVariable");
+		String disableDatabaseEnvironmentVariable=JsonUtils.getString(bootstrapConfig, "bootstrap", "disableDatabaseEnvironmentVariable");
 		if (!Utils.isEmpty(disableDatabaseEnvironmentVariable)) {
 			String v=System.getenv(disableDatabaseEnvironmentVariable);
 			
