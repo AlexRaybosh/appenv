@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -14,6 +15,7 @@ import com.google.gson.JsonObject;
 
 import appenv.db.DB;
 import appenv.etc.DictionaryWord;
+import appenv.susbsystems.ProcessMaintenance;
 import appenv.task.TaskQueueBackend;
 import appenv.task.TaskQueueClient;
 import appenv.util.EncodingUtils;
@@ -51,6 +53,9 @@ public class AppEnv {
 	 */
 	public static void ready() {getAppScope().ready();}
 	public static void destroy() {getAppScope().destroy();}
+	public static void stop() {getAppScope().stop();}
+	public static boolean isStopped() {return getAppScope().isStopped();}
+
 	
 	
 
@@ -115,25 +120,6 @@ public class AppEnv {
 	public static void reloadConfiguration() {getAppScope().reloadConfiguration();}	
 	public static void reloadSubSystems() {getAppScope().reloadSubSystems();}
 	
-	
-	public static void logerr(String msg, Throwable e) {
-		try {
-			List<String> frames = Utils.getErrorFrames();
-			if (frames.size()>0) frames.remove(0);
-			getAppScope().getLogger().logerr(frames, msg, e);
-		} catch (Throwable t) {
-			Utils.rethrowRuntimeException("Failed to log oringal error with msg: "+msg+(e==null?"":"; and exception "+Utils.getStackTrace(e)), t);
-		}
-	}
-	public static void logerr(String msg) {
-		try {
-			List<String> frames = Utils.getErrorFrames();
-			if (frames.size()>0) frames.remove(0);
-			getAppScope().getLogger().logerr(frames, msg, null);
-		} catch (Throwable t) {
-			throw new RuntimeException("Failed to log oringal error with msg: "+msg);
-		}
-	}
 
 	public static String timeUniquePrefix(){
 		String prefix= Long.toString( System.currentTimeMillis() >>> 14, 36);
@@ -183,5 +169,58 @@ public class AppEnv {
 
 	public static TaskQueueBackend taskQueueBackend() {return getAppScope().getTaskQueueBackend();}
 	public static TaskQueueClient taskQueueClient() {return getAppScope().getTaskQueueClient();}
+	
+	static volatile BasicLogger logger=new BasicLogger();
+	public final void setLogger(BasicLogger bl) {
+		if (bl==null) throw new RuntimeException("Logger can't be null");
+		logger=bl;
+	}
+	
+	public static void logout(String msg) {
+		logger.logout(msg);
+	}
+	public static void logerr(String msg, Throwable e) {
+		logerr(msg, e, false);
+	}
+	public static void logerr(String msg, Throwable e, boolean escalate) {
+		logerr(true, msg, e);
+	}
+	public static void logerr(boolean showFrames, String msg, Throwable e) {
+		logerr(showFrames, msg, e, false);
+	}	
+	public static void logerr(boolean showFrames, String msg, Throwable e, boolean escalate) {
+		try {
+			List<String> frames = Utils.getErrorFrames();
+			if (frames.size()>0) frames.remove(0);
+			logger.logerr(frames, msg, e);
+		} catch (Throwable t) {
+			Utils.rethrowRuntimeException("Failed to log oringal error with msg: "+msg+(e==null?"":"; and exception "+Utils.getStackTrace(e)), t);
+		}
+	}
+	public static void logerr(String msg) {
+		logerr(true, msg);
+	}
+	public static void logerr(String msg, boolean escalate) {
+		logerr(true, msg, escalate);
+	}
+	public static void logerr(boolean showFrames, String msg) {
+		logerr(showFrames, msg, false);
+	}
+	public static void logerr(boolean showFrames, String msg, boolean escalate) {
+		try {
+			if (showFrames) {
+				List<String> frames = Utils.getErrorFrames();
+				if (frames.size()>0) frames.remove(0);
+				logger.logerr(frames, msg, null, escalate);
+			} else {
+				logger.logerr(Collections.emptyList(), msg, null, escalate);
+			}
+		} catch (Throwable t) {
+			throw new RuntimeException("Failed to log oringal error with msg: "+msg);
+		}
+	}
+
+	public static void setAppVersion(String version) throws SQLException, InterruptedException {getAppScope().setAppVersion(version);}
+	public static String getAppVersion() {return getAppScope().getAppVersion();}
 	
 }

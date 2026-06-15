@@ -809,7 +809,7 @@ public final class Utils {
 		if (current instanceof Exception) return (Exception)current;
 		return new Exception(current);
 	}
-	public static Exception extraceCause(Throwable t) {
+	public static Exception extractCause(Throwable t) {
 		if (t instanceof InterruptedException) return (InterruptedException)t;
 		Throwable current=t;
 		for (;;) {
@@ -954,7 +954,7 @@ public final class Utils {
 
 	public static <R> R rethrowRuntimeException(String msg, Throwable t) {
 		if (t instanceof InterruptedException) Thread.currentThread().interrupt();
-		Exception c = extraceCause(t);
+		Exception c = extractCause(t);
 		if (c instanceof InterruptedException) Thread.currentThread().interrupt();
 		if (c instanceof RuntimeException) throw (RuntimeException)c;
 		if (msg!=null) throw new RuntimeException(msg, t);
@@ -962,14 +962,14 @@ public final class Utils {
 	}
 	public static <R> R rethrowRuntimeException(Throwable t) {
 		if (t instanceof InterruptedException) Thread.currentThread().interrupt();
-		Exception c = extraceCause(t);
+		Exception c = extractCause(t);
 		if (c instanceof InterruptedException) Thread.currentThread().interrupt();
 		if (c instanceof RuntimeException) throw (RuntimeException)c;
 		throw new RuntimeException(t);
 	}
 	public static <R> R rethrowRuntimeOrInterruptedException(Throwable t) throws InterruptedException {
 		if (t instanceof InterruptedException) throw (InterruptedException)t;
-		Exception c = extraceCause(t);
+		Exception c = extractCause(t);
 		if (c instanceof InterruptedException) throw (InterruptedException)c;
 		if (c instanceof RuntimeException) throw (RuntimeException)c;
 		throw new RuntimeException(t);

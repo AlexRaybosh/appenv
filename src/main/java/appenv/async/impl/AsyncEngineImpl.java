@@ -24,8 +24,8 @@ import appenv.async.Workload;
 public class AsyncEngineImpl extends AsyncEngine implements Workload {
 	volatile Map<String,ServiceImpl<? extends Object>> services=new HashMap<>();
 	Lock bigLock=new ReentrantLock();
-	static AtomicInteger tn=new AtomicInteger();
-	static ExecutorService executorService=Executors.newCachedThreadPool(new ThreadFactory() {
+	final static AtomicInteger tn=new AtomicInteger();
+	final static ExecutorService executorService=Executors.newCachedThreadPool(new ThreadFactory() {
 		   @Override
 		   public Thread newThread(Runnable r) {
 		      Thread thread =  new Thread(r, "async-engine-thread-"+tn.incrementAndGet());

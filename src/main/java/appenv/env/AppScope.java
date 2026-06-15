@@ -34,6 +34,7 @@ import appenv.util.DummyFuture;
 import appenv.util.Utils;
 
 public class AppScope {
+	private volatile boolean isStopped=false;
 	private AppConfOverride appConfOverride=null;
 
 	public AppConfOverride getAppConfOverride() {return appConfOverride;}
@@ -82,12 +83,6 @@ public class AppScope {
 	
 	volatile Future<Init> initFuture;	
 	volatile Map<String,Future<SubSystemStub>> subsystems=new ConcurrentHashMap<>(); 
-	volatile BasicLogger logger=new BasicLogger();
-	public final void setLogger(BasicLogger bl) {
-		if (bl==null) throw new RuntimeException("Logger can't be null");
-		logger=bl;
-	}
-	
 	
 	private void init() {
 		initFuture=getExecutorService().submit(new Callable<Init>() {
@@ -129,7 +124,7 @@ public class AppScope {
 			initFuture=new DummyFuture<>(newInit);
 			oldInit.destroy();
 		} catch (Exception e) {
-			logerr("AppScope reload configuration failed: ",Utils.extraceCause(e));
+			AppEnv.logerr("AppScope reload configuration failed: ",Utils.extractCause(e));
 			Utils.rethrowRuntimeException(e);
 		}
 	}
@@ -150,7 +145,7 @@ public class AppScope {
 					SubSystemStub s=f.get();
 					if (s!=null) s.destroy();
 				} catch (Exception ex) {
-					logerr("AppScope subsystem reload: "+name+" cleanup error", ex);
+					AppEnv.logerr("AppScope subsystem reload: "+name+" cleanup error", ex);
 				}
 			}
 			
@@ -180,8 +175,15 @@ public class AppScope {
 		}
 	}
 
+	public final boolean isStopped() {
+		return isStopped;
+	}
+	public final void stop() {
+		isStopped=true;
+	}
 	
 	public final void destroy() {
+		stop();
 		try {
 			initFuture.get().destroy();		
 			for (Entry<String, Future<SubSystemStub>> e : subsystems.entrySet()) {
@@ -193,7 +195,7 @@ public class AppScope {
 						s.destroy();
 					}
 				} catch (Exception ex) {
-					logerr("AppScope subsystem: "+name+" destruction error: ", ex);
+					AppEnv.logerr("AppScope subsystem: "+name+" destruction error: ", ex);
 				}
 			}
 						
@@ -201,7 +203,7 @@ public class AppScope {
 			getExecutorService().shutdownNow();
 			
 		} catch (Exception e) {
-			logerr("Failed to destroy AppScope", e);
+			AppEnv.logerr("Failed to destroy AppScope", e);
 		}
 		
 		
@@ -223,6 +225,8 @@ public class AppScope {
 		}
 		return null;
 	}
+	
+	
 	
 	public final TaskQueueBackend getTaskQueueBackend() {
 		return this.<TaskQueueBackend>getSubSystem(TASK_QUEUE_BACKEND);
@@ -297,27 +301,7 @@ public class AppScope {
 
 	
 	public final long getTime() {return System.currentTimeMillis();}
-	
-	
-	public void logerr(String msg, Throwable e) {
-		try {
-			List<String> frames = Utils.getErrorFrames();
-			if (frames.size()>0) frames.remove(0);
-			logger.logerr(frames, msg, e);
-		} catch (Throwable t) {
-			Utils.rethrowRuntimeException("Failed to log oringal error with msg: "+msg+(e==null?"":"; and exception "+Utils.getStackTrace(e)), t);
-		}
-	}
-	public void logerr(String msg) {
-		try {
-			List<String> frames = Utils.getErrorFrames();
-			if (frames.size()>0) frames.remove(0);
-			logger.logerr(frames, msg, null);
-		} catch (Throwable t) {
-			throw new RuntimeException("Failed to log oringal error with msg: "+msg);
-		}
-	}
-	
+		
 	
 
 	volatile DictionaryBase dictionaryBase;
@@ -339,7 +323,6 @@ public class AppScope {
 
 	public final JsonObject getConfiguration() {return getAppConf().getConfiguration();}
 
-	public BasicLogger getLogger() {return logger;}
 	
 	
 	public final byte[] encryptAES(byte[] value, int off, int len) {return getInit().getAppSec().encryptAES(value, off, len);}
@@ -354,6 +337,18 @@ public class AppScope {
 	public final byte[] encryptPrivateRSA(byte[] value) {return getInit().getAppSec().encryptPrivateRSA(value);}	
 	public final byte[] decryptPublicRSA(byte[] value) {return getInit().getAppSec().decryptPublicRSA(value);}
 	public final byte[] signSHA256PrivateRSA(byte[] value) {return getInit().getAppSec().signSHA256PrivateRSA(value);}
+
+	private volatile String version=readVersion();
+	
+	public void setAppVersion(String version) throws SQLException, InterruptedException {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public String getAppVersion() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 	
 
 }
