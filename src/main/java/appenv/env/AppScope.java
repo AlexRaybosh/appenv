@@ -1,5 +1,8 @@
 package appenv.env;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.HashMap;
@@ -338,7 +341,8 @@ public class AppScope {
 	public final byte[] decryptPublicRSA(byte[] value) {return getInit().getAppSec().decryptPublicRSA(value);}
 	public final byte[] signSHA256PrivateRSA(byte[] value) {return getInit().getAppSec().signSHA256PrivateRSA(value);}
 
-	private volatile String version=readVersion();
+	private volatilepub
+	String version=readVersion();
 	
 	public void setAppVersion(String version) throws SQLException, InterruptedException {
 		// TODO Auto-generated method stub
