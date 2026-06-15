@@ -222,5 +222,5 @@ public class AppEnv {
 
 	public static void setAppVersion(String version) throws SQLException, InterruptedException {getAppScope().setAppVersion(version);}
 	public static String getAppVersion() {return getAppScope().getAppVersion();}
-	
+
 }

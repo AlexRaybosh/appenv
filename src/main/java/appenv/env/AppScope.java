@@ -184,7 +184,6 @@ public class AppScope {
 	public final void stop() {
 		isStopped=true;
 	}
-	
 	public final void destroy() {
 		stop();
 		try {
@@ -228,9 +227,7 @@ public class AppScope {
 		}
 		return null;
 	}
-	
-	
-	
+
 	public final TaskQueueBackend getTaskQueueBackend() {
 		return this.<TaskQueueBackend>getSubSystem(TASK_QUEUE_BACKEND);
 	}	
@@ -304,8 +301,6 @@ public class AppScope {
 
 	
 	public final long getTime() {return System.currentTimeMillis();}
-		
-	
 
 	volatile DictionaryBase dictionaryBase;
 	public final DictionaryWord getDictionaryWord(Number id) {return getInit().getDictionaryWord(id);}	
@@ -326,8 +321,6 @@ public class AppScope {
 
 	public final JsonObject getConfiguration() {return getAppConf().getConfiguration();}
 
-	
-	
 	public final byte[] encryptAES(byte[] value, int off, int len) {return getInit().getAppSec().encryptAES(value, off, len);}
 	public final byte[] decryptAES(byte[] value, int off, int len) {return getInit().getAppSec().decryptAES(value, off, len);}
 	public final byte[] encryptAES(byte[] value) {return getInit().getAppSec().encryptAES(value);}
@@ -341,18 +334,31 @@ public class AppScope {
 	public final byte[] decryptPublicRSA(byte[] value) {return getInit().getAppSec().decryptPublicRSA(value);}
 	public final byte[] signSHA256PrivateRSA(byte[] value) {return getInit().getAppSec().signSHA256PrivateRSA(value);}
 
-	private volatilepub
-	String version=readVersion();
-	
+	private volatile String version=readVersion();
+	static String readVersion() {
+		String ret=null;
+		InputStream is =null;
+		try {
+			is=AppScope.class.getClassLoader().getResourceAsStream("/version");
+			if (is==null) is=AppScope.class.getClassLoader().getResourceAsStream("version");
+			if (is==null) return "not-versioned";
+			ret=new String(is.readAllBytes(), StandardCharsets.UTF_8);
+		} catch (Exception e) {
+			ret="Failed to get version: "+e.getMessage();
+		} finally {
+			Utils.close(is);
+		}
+		ret=ret.replace("\n", "").replace("\r", "").trim();
+		return ret;
+	}
+	public final String getAppVersion() {return version;}	
 	public void setAppVersion(String version) throws SQLException, InterruptedException {
-		// TODO Auto-generated method stub
+		this.version=version;
+		if (hasSubSystem(PROCESS_MAINTENANCE)) {
+			ProcessMaintenance pm=this.<ProcessMaintenance>getSubSystem(PROCESS_MAINTENANCE);
+			if (pm!=null) pm.updateAppVersion(version);
+		}
 		
 	}
-
-	public String getAppVersion() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
 
 }
