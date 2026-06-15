@@ -55,7 +55,6 @@ public class AppEnv {
 	public static void destroy() {getAppScope().destroy();}
 	public static void stop() {getAppScope().stop();}
 	public static boolean isStopped() {return getAppScope().isStopped();}
-
 	
 	
 
@@ -121,6 +120,7 @@ public class AppEnv {
 	public static void reloadSubSystems() {getAppScope().reloadSubSystems();}
 	
 
+
 	public static String timeUniquePrefix(){
 		String prefix= Long.toString( System.currentTimeMillis() >>> 14, 36);
 		if (prefix.length()<6) {
@@ -171,7 +171,7 @@ public class AppEnv {
 	public static TaskQueueClient taskQueueClient() {return getAppScope().getTaskQueueClient();}
 	
 	static volatile BasicLogger logger=new BasicLogger();
-	public final void setLogger(BasicLogger bl) {
+	public static void setLogger(BasicLogger bl) {
 		if (bl==null) throw new RuntimeException("Logger can't be null");
 		logger=bl;
 	}
@@ -187,7 +187,7 @@ public class AppEnv {
 	}
 	public static void logerr(boolean showFrames, String msg, Throwable e) {
 		logerr(showFrames, msg, e, false);
-	}	
+	}
 	public static void logerr(boolean showFrames, String msg, Throwable e, boolean escalate) {
 		try {
 			List<String> frames = Utils.getErrorFrames();
