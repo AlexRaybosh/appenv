@@ -351,14 +351,12 @@ public class AppScope {
 		ret=ret.replace("\n", "").replace("\r", "").trim();
 		return ret;
 	}
-	public final String getAppVersion() {return version;}	
-	public void setAppVersion(String version) throws SQLException, InterruptedException {
+	public final String getAppVersion() {return version;}
+	public final void setAppVersion(String version) throws SQLException, InterruptedException {
 		this.version=version;
 		if (hasSubSystem(PROCESS_MAINTENANCE)) {
 			ProcessMaintenance pm=this.<ProcessMaintenance>getSubSystem(PROCESS_MAINTENANCE);
 			if (pm!=null) pm.updateAppVersion(version);
-		}
-		
+		}	
 	}
-
 }

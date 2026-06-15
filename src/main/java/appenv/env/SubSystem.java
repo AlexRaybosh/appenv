@@ -28,7 +28,7 @@ public abstract class SubSystem {
 		try {
 			return tick(start, interval, tickName, lastRun);
 		} catch (Exception e) {
-			appScope.logerr("SubSystem "+getName()+" timer "+tickName+" error: ", e);
+			AppEnv.logerr("SubSystem "+getName()+" timer "+tickName+" error: ", e);
 			return false;
 		}
 	}

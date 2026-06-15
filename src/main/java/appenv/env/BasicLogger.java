@@ -24,7 +24,7 @@ public class BasicLogger {
 		sb.append(e==null?"": ("Error: "+Utils.getStackTrace(e)));
 		String out=sb.toString();
 		if (out.endsWith("\n")) {
-			System.err.println(out);
+			System.err.print(out);
 			System.err.flush();
 		} else System.err.println(out);
 	}
@@ -39,5 +39,4 @@ public class BasicLogger {
 		System.out.println(msg);
 		
 	}
-		
 }
