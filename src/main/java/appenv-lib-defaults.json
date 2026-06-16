@@ -183,7 +183,7 @@
 							"autoCommit" : false
 						},
 						{
-							"onOpen" : "create temporary table common_tmp_1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci",
+							"onOpen" : "create temporary table common_tmp1 ( i1 bigint null, i2 bigint null, i3 bigint null, i4 bigint null, i5 bigint null, i6 bigint null, i7 bigint null, i8 bigint null, i9 bigint null, t1 text null, t2 text null, t3 text null, t4 text null, t5 text null, t6 text null, t7 text null, t8 text null, t9 text null, lt1 longtext null, b1 longblob null, b2 longblob null, index (i1) ) engine=MEMORY DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci",
 							"onClose" : "drop temporary table if exists common_tmp_1",
 							"autoCommit" : false
 						}
@@ -216,6 +216,12 @@
 		},
 		"dumbdownPostgresNoSeqScan" : {
 			"because" : "Postgres sucks",
+			"optional" : true,
+			"properties" : {
+				"dburlBootstrapPropertyName" : "dburl",
+				"dbuserBootstrapPropertyName" : "dbuser",
+				"dbpasswordBootstrapPropertyName" : "dbpassword"
+			},
 			"maxCachedPreparedStatements" : 2000,
 			"maxConnections" : 10, 
 			"retryTimeoutSeconds" : 10.0,		
@@ -257,5 +263,12 @@
 				"cacheSize" : 1000000
 			}
 		}
-	}		
+	},
+	"ioSlave" : {
+		"utilityDir" : "/var/tmp",
+		"workDir" : "/var/tmp/ioslaves",
+		"checkSeconds" : 10.0,
+		"poolsCheckSeconds" : 3.0,
+		"callTimeoutSeconds" : 10.0
+	}	
 }

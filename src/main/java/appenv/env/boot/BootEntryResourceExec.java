@@ -43,7 +43,6 @@ public class BootEntryResourceExec extends BootEntry {
 	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String fileName=JsonUtils.getString(conf, "file");
 		if (fileName==null) return false;
-		Path path=Paths.get(fileName);
 		if (BootEntry.isWindows) {
 			BootstrapAppConf.logerr("skipping "+conf+", windows detected");
 			return false;

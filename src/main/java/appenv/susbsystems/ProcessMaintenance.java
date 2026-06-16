@@ -62,6 +62,10 @@ public class ProcessMaintenance extends SubSystem {
 		
 		return true;
 	}
+	public void updateAppVersion(String version) throws SQLException, InterruptedException {
+		if (processId!=null) getAppScope().getDB().update("update system_process set app_version=? where id=?", false,version, processId);
+	}
+
 	
 	private Long insertProcessId(final String hostName, final Long pid, final String cmdLine, final Long start)
 			throws SQLException, InterruptedException {
@@ -71,7 +75,7 @@ public class ProcessMaintenance extends SubSystem {
 				long now=getAppScope().getTime();
 				long dead=getDead(now);
 				cw.update(INSERT_SQL, false, 
-						processId, 1, appScope.getAppConfId(), 
+						processId, 1, appScope.getAppConfId(), appScope.getAppConf().getName(), AppEnv.getAppScope().getAppVersion(), appScope.getAppConf().getEnvTypeId(), appScope.getAppConf().getEnvType(),
 						hostName, pid, cmdLine, 
 						clusterMemberId, start==null?now:start, now, dead);
 				return processId;
@@ -100,7 +104,7 @@ public class ProcessMaintenance extends SubSystem {
 			try {
 				getAppScope().getDB().update("update system_process set is_active=1, ping_ms=?, dead_ms=? where id=?", true, now, deadMs, processId);
 			} catch (Exception e) {
-				appScope.logerr("failed to touch system_process: "+processId,e);
+				AppEnv.logerr("failed to touch system_process: "+processId,e);
 			}
 			return true;
 		} else if (MAINTAIN.equals(tickName)) {
@@ -114,7 +118,7 @@ public class ProcessMaintenance extends SubSystem {
 					appScope.getDB().update("delete from system_process where id=?", true, Utils.toLong(did));
 				}
 			} catch (Exception e) {
-				appScope.logerr("failed to maint system_process: "+processId,e);
+				AppEnv.logerr("failed to maint system_process: "+processId,e);
 			}
 			
 			return true;
@@ -127,7 +131,7 @@ public class ProcessMaintenance extends SubSystem {
 					appScope.getDB().update("update system_process set cluster_member_id=? where id=?",false, newClusterMemberId, clusterMemberId);
 				}	
 			} catch (Exception e) {
-				if (e!=null) appScope.logerr("failed to lsof system_process: "+processId,e);
+				if (e!=null) AppEnv.logerr("failed to lsof system_process: "+processId,e);
 			}
 			return true;
 		}
@@ -170,7 +174,7 @@ public class ProcessMaintenance extends SubSystem {
 			if(appScope.hasDB()) 
 				appScope.getDB().update("update system_process set is_active=0 where id=?", true, processId);
 		} catch (Exception e) {
-			appScope.logerr("Failed to deactivate system_process: "+processId+" on destroy", e);
+			AppEnv.logerr("Failed to deactivate system_process: "+processId+" on destroy", e);
 		}
 	}
 
@@ -184,7 +188,7 @@ public class ProcessMaintenance extends SubSystem {
 		try {
 			return tick(startAfterMs, intervalMs, tickName, lastRun);
 		} catch (Exception e) {
-			appScope.logerr("ProcessMaintenence timer "+tickName+" error: "+Utils.getStackTrace(Utils.extraceCause(e)));
+			AppEnv.logerr("ProcessMaintenence timer "+tickName+" error: "+Utils.getStackTrace(Utils.extractCause(e)));
 			return true;
 		}
 	}

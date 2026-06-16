@@ -52,8 +52,28 @@ import appenv.util.Utils;
 public class TaskQueueBackendSubsystem extends SubSystem implements TaskQueueBackend {
 
 	public enum TaskProcessingState {
-		START,SUCCESS,ERROR,POSTPONED
+		START,SUCCESS,ERROR,POSTPONED,FATAL,CANCELED,INVALID
 	};
+	public static TaskState toTaskState(TaskProcessingState ps) {
+		switch (ps) {
+		case START:
+			return TaskState.PROCESS;
+		case SUCCESS:
+			return TaskState.SUCCESS;
+		case ERROR:
+			return TaskState.ERROR;
+		case POSTPONED:
+			return TaskState.INIT;
+		case FATAL:
+			return TaskState.FATAL;
+		case CANCELED:
+			return TaskState.CANCELED;
+		case INVALID:
+			return TaskState.INVALID;
+		default:
+			throw new RuntimeException("Can't map processing stte: "+ps);
+		}
+	}
 
 	class TaskProcessingEntry implements TaskProcessingContext {
 		final TaskType taskType;
