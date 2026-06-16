@@ -206,7 +206,7 @@ public class BootstrapAppConf {
 		JsonObject myConf = JsonUtils.getJsonObject(bootstrapConfig, "appConf", appConfName);
 		Set<String> extAppNames=new HashSet<>();
 		if (appConfName!=null) extAppNames.add(appConfName);
-		myConf=handleExtended(extAppNames,bootstrapConfig,myConf);
+		myConf=handleExtends(extAppNames,bootstrapConfig,myConf);
 		JsonObject defConf= JsonUtils.getJsonObject(bootstrapConfig, "defaults");
 		JsonObject realConf=JsonUtils.combine(appenvLibConfig, defConf, myConf);
 		
@@ -246,7 +246,7 @@ public class BootstrapAppConf {
 	}
 
 
-	private JsonObject handleExtended(Set<String> extAppNames, JsonObject bootstrapConfig, JsonObject myConf) {
+	private JsonObject handleExtends(Set<String> extAppNames, JsonObject bootstrapConfig, JsonObject myConf) {
 		if (myConf==null) return null;
 		JsonObject conf=myConf;
 		for (JsonElement e : JsonUtils.getJsonArrayIterable(myConf, "extends")) {
@@ -256,7 +256,7 @@ public class BootstrapAppConf {
 			extAppNames.add(name);
 			JsonObject child = JsonUtils.getJsonObject(bootstrapConfig, "appConf", name);
 			if (child==null) continue;
-			child=handleExtended(extAppNames, bootstrapConfig, child);
+			child=handleExtends(extAppNames, bootstrapConfig, child);
 			conf=JsonUtils.combine(child,conf);
 		}
 		return conf;
@@ -398,7 +398,7 @@ public class BootstrapAppConf {
 
 	public static void logerr(String msg, Exception e) {
 		if (Utils.isEmpty(msg) && e==null) return;
-		AppEnv.logerr("BOOTSTRAP:"+ (msg==null?"":msg) , e);
+		AppEnv.logerr("BOOTSTRAP: "+ (msg==null?"":msg) , e);
 	}
 
 

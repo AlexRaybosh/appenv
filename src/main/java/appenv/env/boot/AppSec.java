@@ -185,16 +185,16 @@ public class AppSec {
 		if (!Utils.isEmpty(rsaPrivatePKCS8Base64)) {
 			// Could it be base64 recoded
 			try {
-				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPrivatePKCS8Base64), StandardCharsets.UTF_8);
-				rsaPrivatePKCS8Base64=tmp;
+				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPrivatePKCS8Base64), StandardCharsets.ISO_8859_1);
+				rsaPrivatePKCS8Base64=tmp.trim();
 			} catch (Exception e) {
 			}
 		}
 		if (!Utils.isEmpty(rsaPublicPKCS8Base64)) {
 			// Could it be base64 recoded
 			try {
-				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPublicPKCS8Base64), StandardCharsets.UTF_8);
-				rsaPublicPKCS8Base64=tmp;
+				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPublicPKCS8Base64), StandardCharsets.ISO_8859_1);
+				rsaPublicPKCS8Base64=tmp.trim();
 			} catch (Exception e) {
 			}
 		}		
@@ -219,9 +219,9 @@ public class AppSec {
 
 			
 			if (!Utils.isEmpty(rsaPrivatePKCS8Base64)) {
-				String clean = rsaPrivatePKCS8Base64.trim().replaceAll("[-]+BEGIN\\s(?:RSA\\s+)PRIVATE KEY[-]+","");
-				//-----BEGIN PRIVATE KEY-----
-				clean=clean.replaceAll("[-]+END\\s+(?:RSA\\s+)PRIVATE\\s+KEY[-]+", "");
+				String clean = rsaPrivatePKCS8Base64.replaceAll("[-]+BEGIN\\s+(?:RSA\\s+)PRIVATE KEY[-]+","");
+				//-----BEGIN RSA PRIVATE KEY-----
+				clean=clean.replaceAll("[-]+END\\s+(?:RSA\\s+)PRIVATE\\s+KEY[-]+","");
 				clean=clean.replace("\n", "");
 				clean=clean.replace("\r", "");
 				byte[] rsaPrivatePKCS8 = Base64.decodeBase64(clean);

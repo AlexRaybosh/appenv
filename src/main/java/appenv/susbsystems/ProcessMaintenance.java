@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 
 import appenv.db.ConnectionWrap;
 import appenv.db.StatementBlock;
+import appenv.env.AppEnv;
 import appenv.env.AppScope;
 import appenv.env.SubSystem;
 import appenv.util.JsonUtils;
@@ -17,11 +18,13 @@ public class ProcessMaintenance extends SubSystem {
 
 	final static String INSERT_SQL="INSERT INTO system_process ("
 			+ "id, is_active, app_conf_id, "
+			+ "app_conf_name, app_version, env_type_id, env_type,"
 			+ "hostname, pid, cmd, "
 			+ "cluster_member_id, start_ms, ping_ms, "
 			+ "dead_ms) "
 			+ "VALUES ("
 			+ "? ,?, ?, "
+			+ "? ,?, ?, ?"
 			+ "?, ?, ?, "
 			+ "?, ?, ?, ?)";
 	

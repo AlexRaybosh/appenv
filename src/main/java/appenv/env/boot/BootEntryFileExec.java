@@ -32,7 +32,7 @@ public class BootEntryFileExec extends BootEntry {
 		boolean abortOnFileNotExecutable=JsonUtils.getBool(conf, "abortOnFileNotExecutable");
 		boolean abortOnExecutionError=JsonUtils.getBool(conf, "abortOnExecutionError");
 		if (BootEntry.isWindows) {
-			BootstrapAppConf.logerr("skipping "+conf+", windows detected");
+			BootstrapAppConf.logerr("skipping " +conf+ ", windows detected");
 			return false;
 		}
 

@@ -74,7 +74,7 @@ public class Init {
 			if ("core".equals(dbName)) continue;
 			JsonObject dbConf = JsonUtils.getJsonObject(e.getValue());
 			if (dbConf==null) continue;
-			boolean optional=JsonUtils.getBoolean(false,  dbConf, "optional");
+			boolean optional=JsonUtils.getBoolean(false, dbConf, "optional");
 			
 			String dburl=JsonUtils.getString(dbConf,"properties", "dburl");
 			if (dburl==null) {

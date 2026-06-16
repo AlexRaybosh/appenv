@@ -9,13 +9,13 @@ DROP TABLE IF EXISTS task_field_num;
 CREATE TABLE IF NOT EXISTS task_type (
   id INT NOT NULL,
   task_type_name VARCHAR(200) NOT NULL,
-  meta TEXT NULL COLLATE "C.utf8",
+  meta TEXT NULL,
   PRIMARY KEY (id)
 );
 CREATE UNIQUE INDEX task_type_idx ON task_type (task_type_name);
 
-insert into task_type (id,task_type_name,meta) values (0, 'dummy','{}');
-insert into task_type (id,task_type_name,meta) values (1, 'daily_run','{}');
+insert into task_type (id,task_type_name,meta) values (0, 'test1','{}');
+insert into task_type (id,task_type_name,meta) values (1, 'test2','{}');
 
 
 CREATE TABLE IF NOT EXISTS task_state (
@@ -30,6 +30,8 @@ insert into task_state (id,task_state_name) values (1, 'PROCESS');
 insert into task_state (id,task_state_name) values (2, 'SUCCESS');
 insert into task_state (id,task_state_name) values (3, 'ERROR');
 insert into task_state (id,task_state_name) values (4, 'FATAL');
+insert into task_state (id,task_state_name) values (5, 'CANCELED');
+insert into task_state (id,task_state_name) values (6, 'INVALID');
 
 CREATE TABLE IF NOT EXISTS task_queue (
   ticket VARCHAR(128) NOT NULL,
@@ -64,8 +66,8 @@ CREATE TABLE IF NOT EXISTS task_queue_error (
   ticket VARCHAR(128) NOT NULL,
   last_ms BIGINT NOT NULL,
   system_process_id BIGINT NOT NULL,
-  message VARCHAR(400) NULL COLLATE "C.utf8",
-  error TEXT NULL COLLATE "C.utf8",
+  message VARCHAR(400) NULL,
+  error TEXT NULL,
   PRIMARY KEY (id)
 );
 CREATE INDEX task_queue_error_idx ON task_queue_error (task_type_id, ticket, last_ms);
@@ -95,8 +97,8 @@ CREATE TABLE IF NOT EXISTS task_field_text (
   task_type_id INT NOT NULL,
   ticket VARCHAR(128) NOT NULL,
   id BIGINT NOT NULL,
-  field VARCHAR(128) NOT NULL COLLATE "C.utf8",
-  value VARCHAR(600) NOT NULL COLLATE "C.utf8",
+  field VARCHAR(128) NOT NULL,
+  value VARCHAR(600) NOT NULL,
   PRIMARY KEY (task_type_id, ticket, id)
 ) partition by hash (task_type_id);
 create table task_field_text_p0 partition of task_field_text for values with (modulus 8, remainder 0);
@@ -115,7 +117,7 @@ CREATE TABLE IF NOT EXISTS task_field_num (
   task_type_id INT NOT NULL,
   ticket VARCHAR(128) NOT NULL,
   id BIGINT NOT NULL,  
-  field VARCHAR(128) NOT NULL COLLATE "C.utf8",
+  field VARCHAR(128) NOT NULL,
   value BIGINT NOT NULL,
   PRIMARY KEY (task_type_id, ticket, id)
 ) partition by hash (task_type_id);

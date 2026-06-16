@@ -33,44 +33,33 @@ public class BootEntryResourceExec extends BootEntry {
 			if (is==null) return null;
 			return new String(is.readAllBytes(), StandardCharsets.UTF_8);
 		} catch (Exception e) {
-			Utils.rethrowRuntimeException(e);
+			return Utils.rethrowRuntimeException(e);
 		} finally {
 			Utils.close(is);
 		}
 	}
+	
 	@Override
 	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String fileName=JsonUtils.getString(conf, "file");
 		if (fileName==null) return false;
 		Path path=Paths.get(fileName);
-		boolean abortOnFileMissing=JsonUtils.getBool(conf, "abortOnFileMissing");
-		boolean abortOnFileNotExecutable=JsonUtils.getBool(conf, "abortOnFileNotExecutable");
-		boolean abortOnExecutionError=JsonUtils.getBool(conf, "abortOnExecutionError");
 		if (BootEntry.isWindows) {
 			BootstrapAppConf.logerr("skipping "+conf+", windows detected");
 			return false;
 		}
+		boolean abortOnExecutionError=JsonUtils.getBool(conf, "abortOnExecutionError");
+		String skipOnShellEvalError=JsonUtils.getString(conf, "skipOnShellEvalError");
+		if (!Utils.isEmpty(skipOnShellEvalError)) {
+			boolean su=bootstrapAppConf.checkShellEval(bootstrapAppConf.shell, skipOnShellEvalError);
+			if (!su) return false;
+		}
+		
 
-		if (!Files.exists(path)) {
-			//
-			if (abortOnFileMissing) throw new RuntimeException(fileName+" in bootstrap "+conf+" missing");
-			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(false, fileName+" in bootstrap "+conf+" missing");
-			return false;
-		}
-		if (!Files.isExecutable(path)) {
-			//
-			if (abortOnFileNotExecutable) throw new RuntimeException("Bootstrap "+fileName+" in "+conf+" is not executable");
-			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(false, "Bootstrap "+fileName+" in "+conf+" is not executable");
-			return false;
-		}
-		
-		List<String> lst=new ArrayList<>(Arrays.asList(fileName));
-		for (JsonElement argObj : JsonUtils.getJsonArrayIterable(conf, "args")) {
-			String str=JsonUtils.getString(argObj);
-			if (str!=null) lst.add(str);
-		}
-		
-		ProcessBuilder pb=new ProcessBuilder(lst.toArray(new String[lst.size()]));
+		String resProvider=readPropsProvider(fileName);
+		if (resProvider==null) throw new RuntimeException("Resource: "+fileName+" not found");
+				
+		ProcessBuilder pb=new ProcessBuilder(new String[] {bootstrapAppConf.shell, "-c", resProvider});
 		pb.redirectInput(new File("/dev/null"));
 		pb.redirectOutput(Redirect.PIPE);
 		pb.redirectError(Redirect.PIPE);

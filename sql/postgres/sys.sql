@@ -30,6 +30,7 @@ insert into env_type values (3, 'stg');
 insert into env_type values (4, 'alpha');
 insert into env_type values (5, 'dev');
 insert into env_type values (6, 'localdev');
+insert into env_type values (7, 'unknown');
 
 create table if not exists app_conf (
 	id int not null,
@@ -45,7 +46,7 @@ create table if not exists app_conf_entry (
 	app_conf_id int not null,
 	position int not null default 0,
     config varchar(64) not null,
-    meta text not null COLLATE "C.utf8",
+    meta text not null,
     last_ms bigint not null,
     primary key (app_conf_id,position)
 );
@@ -58,23 +59,23 @@ insert into app_conf values (3, 6, 'test-task-server', 1000*extract(epoch from n
 
 
 
-insert into app_conf_entry (app_conf_id,position,config,meta,last_ms) values (1,0,'my_entry','{\"some value\":\"some override\"}',1000*extract(epoch from now()));
+-- insert into app_conf_entry (app_conf_id,position,config,meta,last_ms) values (1,0,'my_entry','{\"some value\":\"some override\"}',1000*extract(epoch from now()));
 
 
 
 create table if not exists cluster_member (
-	id int not null,
+    id int not null,
     hostname varchar(300) not null,
     member_type varchar(64) not null,
     tcp_port int not null,
-	meta text not null COLLATE "C.utf8",
-    app_conf_id int not null default 0,
+	meta text not null,
+--    app_conf_id int not null default 0,
     last_ms bigint not null,
     primary key (id)
 );
 create unique index cluster_member_idx on cluster_member(hostname, tcp_port);
-create index cluster_member_app_conf_idx on cluster_member(app_conf_id);
-alter table cluster_member add constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id);
+-- create index cluster_member_app_conf_idx on cluster_member(app_conf_id);
+-- alter table cluster_member add constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id);
 
 
 
@@ -84,16 +85,20 @@ create table if not exists system_process (
 	id bigint not null,
     is_active int not null,
     app_conf_id int null,
+    app_conf_name varchar(300) null,
+    app_version varchar(300) null, -- need to add support for a version string
+    env_type_id int null,
+    env_type varchar(100) null,    
     hostname varchar(300) not null,
     pid bigint null,
-    cmd text null COLLATE "C.utf8",
+    cmd text null,
     cluster_member_id int null,
     start_ms bigint not null,
     ping_ms  bigint not null,
     dead_ms  bigint null,
     primary key (id)
 );
-create index process_dead_idx on system_process(is_active, dead_ms, id);
+create index process_dead_idx on system_process(is_active, dead_ms);
 create index process_cluster_idx on system_process(cluster_member_id, is_active);
 alter table system_process add constraint system_process_cluster_member_fk foreign key (cluster_member_id) references cluster_member(id);
 alter table system_process add constraint system_process_app_conf_fk foreign key (app_conf_id) references app_conf(id);
@@ -103,9 +108,23 @@ alter table system_process add constraint system_process_app_conf_fk foreign key
 drop table if exists word_dictionary;
 create table if not exists word_dictionary (
 	id int not null,
-    word varchar(700) not null COLLATE "C.utf8",
+    word varchar(700) not null,
     last_ms bigint null,
     primary key (id)
 );
 create unique index word_dictionary_idx on word_dictionary (word);
 
+drop table if exists unique_env_lock;
+CREATE TABLE IF NOT EXISTS unique_env_lock (
+  id BIGINT NOT NULL,
+  lock_name varchar(200) NOT NULL,
+  env_type varchar(100) NOT NULL,
+  env_type_id int null,
+  system_process_id BIGINT NOT NULL,
+  create_ms BIGINT unsigned NOT NULL,
+  last_ms BIGINT unsigned NOT NULL,
+  PRIMARY KEY(id)
+  ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4;
+create unique index unique_env_lock_idx on unique_env_lock (lock_name, env_type);
+create index unique_env_lock_last_idx on unique_env_lock (last_ms);
+create index unique_env_lock_proc_idx on unique_env_lock (system_process_id);

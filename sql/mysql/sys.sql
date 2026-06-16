@@ -69,15 +69,15 @@ create table if not exists cluster_member (
     member_type varchar(64) not null,
     tcp_port int not null,
 	meta mediumtext not null,
-    app_conf_id int not null default 0,
+    -- app_conf_id int not null default 0,
     last_ms bigint not null,
     primary key (id),
-    unique index cluster_member_idx (hostname, tcp_port),
-    index cluster_member_app_conf_idx (app_conf_id),
-    constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id) 
+    unique index cluster_member_idx (hostname, tcp_port)
+    -- index cluster_member_app_conf_idx (app_conf_id),
+    -- constraint cluster_member_app_conf_fk foreign key (app_conf_id) references app_conf(id) 
 ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, app_conf_id, last_ms) VALUES (1, 'z440', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
+-- INSERT INTO cluster_member (id, hostname, member_type, tcp_port, meta, app_conf_id, last_ms) VALUES (1, 'z440', 'WEBSERVER', 8080, '{}', 1, unix_timestamp()*1000);
 
 
 
@@ -85,6 +85,10 @@ create table if not exists system_process (
 	id bigint not null,
     is_active bool not null,
     app_conf_id int null,
+    app_conf_name varchar(300) null,
+    app_version varchar(300) null, -- need to add support for a version string
+    env_type_id int null,
+    env_type varchar(100) null,   
     hostname varchar(300) not null,
     pid bigint null,
     cmd mediumtext null,
@@ -97,7 +101,7 @@ create table if not exists system_process (
     index process_cluster_idx (cluster_member_id, is_active),
     constraint system_process_cluster_member_fk foreign key (cluster_member_id) references cluster_member(id),
     constraint system_process_app_conf_fk foreign key (app_conf_id) references app_conf(id)
-) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 
 
@@ -108,6 +112,21 @@ create table if not exists word_dictionary (
     last_ms bigint null,
     primary key (id),
     unique index word_dictionary_idx (word)
-) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
+drop table if exists unique_env_lock;
+CREATE TABLE IF NOT EXISTS unique_env_lock (
+  id BIGINT NOT NULL,
+  lock_name varchar(200) NOT NULL,
+  env_type varchar(100) NOT NULL,
+  env_type_id int null,
+  system_process_id BIGINT NOT NULL,
+  create_ms BIGINT unsigned NOT NULL,
+  last_ms BIGINT unsigned NOT NULL,
+  PRIMARY KEY(id)
+  ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4;
+create unique index unique_env_lock_idx on unique_env_lock (lock_name, env_type);
+create index unique_env_lock_last_idx on unique_env_lock (last_ms);
+create index unique_env_lock_proc_idx on unique_env_lock (system_process_id);
 
+  

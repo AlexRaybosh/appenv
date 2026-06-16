@@ -290,7 +290,7 @@ public class APILoader {
 		        }
 		        return;
 	        } catch (Exception e) {
-	        	last = Utils.extraceCause(e);
+	        	last = Utils.extractCause(e);
 			}
         }
         Utils.rethrowCause(last);

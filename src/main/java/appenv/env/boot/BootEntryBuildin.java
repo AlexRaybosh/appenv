@@ -20,7 +20,7 @@ public class BootEntryBuildin extends BootEntry {
 			String name=e.getKey();
 			String val=JsonUtils.getString(e.getValue());
 			if (val==null) {
-				String envName = JsonUtils.getString(e.getValue(), "env");
+				String envName = JsonUtils.getString(e.getValue(),"env");
 				if (envName!=null) {
 					val=System.getenv(envName);
 					if (val==null) BootstrapAppConf.logerr("Undefined environment variable "+envName+" in : "+conf);

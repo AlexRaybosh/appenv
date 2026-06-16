@@ -30,6 +30,8 @@ insert into task_state (id,task_state_name) values (1, 'PROCESS');
 insert into task_state (id,task_state_name) values (2, 'SUCCESS');
 insert into task_state (id,task_state_name) values (3, 'ERROR');
 insert into task_state (id,task_state_name) values (4, 'FATAL');
+insert into task_state (id,task_state_name) values (5, 'CANCELED');
+insert into task_state (id,task_state_name) values (6, 'INVALID');
 
 CREATE TABLE IF NOT EXISTS task_queue (
   ticket VARCHAR(128) NOT NULL,

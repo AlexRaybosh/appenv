@@ -24,11 +24,11 @@ public abstract class BootEntry {
 	public abstract Properties getProperties();
 	public abstract boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject obj);
 
-	final static boolean isWindows = checkWinOs();
+	final static boolean isWindows = checkWinOs();//System.getProperty("os.name").startsWith("Windows");
 	private static boolean checkWinOs() {
 		String os = System.getProperty("os.name");
 		if (os!=null && os.toLowerCase().contains("windows")) return true;
 		return false;
-	};
+	}
 
 }
