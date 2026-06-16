@@ -6,6 +6,7 @@ import java.util.Properties;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import appenv.env.AppEnv;
 import appenv.util.JsonUtils;
 
 public class BootEntryBuildin extends BootEntry {
@@ -17,8 +18,14 @@ public class BootEntryBuildin extends BootEntry {
 		properties=new Properties();
 		for (Map.Entry<String, JsonElement> e : obj.entrySet()) {
 			String name=e.getKey();
-			String val=e.getValue().getAsString();
-			if (val==null) continue;
+			String val=JsonUtils.getString(e.getValue());
+			if (val==null) {
+				String envName = JsonUtils.getString(e.getValue(), "env");
+				if (envName!=null) {
+					val=System.getenv(envName);
+					if (val==null) BootstrapAppConf.logerr("Undefined environment variable "+envName+" in : "+conf);
+				}
+			}
 			properties.put(name, val);
 		}
 		return true;
@@ -31,5 +38,8 @@ public class BootEntryBuildin extends BootEntry {
 	@Override
 	public Properties getProperties() {
 		return properties;
+	}
+	public static void main(String[] args) {
+		
 	}
 }

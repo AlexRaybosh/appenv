@@ -14,6 +14,7 @@ public abstract class BootEntry {
 		if (Utils.isEmpty(propertiesProviderType)) return null;
 		if ("SHELL_EVAL".equals(propertiesProviderType)) return new BootEntryShellEval();
 		if ("FILE_EXEC".equals(propertiesProviderType)) return new BootEntryFileExec();
+		if ("RESOURCE_EXEC".equals(propertiesProviderType)) return new BootEntryResourceExec();
 		if ("FILE".equals(propertiesProviderType)) return new BootEntryFileRead();
 		if ("BUILDIN".equals(propertiesProviderType)) return new BootEntryBuildin();
 		return null;
@@ -23,6 +24,11 @@ public abstract class BootEntry {
 	public abstract Properties getProperties();
 	public abstract boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject obj);
 
-	
+	final static boolean isWindows = checkWinOs();
+	private static boolean checkWinOs() {
+		String os = System.getProperty("os.name");
+		if (os!=null && os.toLowerCase().contains("windows")) return true;
+		return false;
+	};
 
 }

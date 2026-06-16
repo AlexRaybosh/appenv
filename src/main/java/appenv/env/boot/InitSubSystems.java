@@ -245,7 +245,7 @@ public class InitSubSystems {
 				DummyFuture<SubSystemStub> dummy=new DummyFuture<SubSystemStub>(s);
 				ret.put(name, dummy);
 			} catch (Exception ex) {
-				DummyErrorFuture<SubSystemStub> dummy=new DummyErrorFuture<>(Utils.extraceCause(ex));
+				DummyErrorFuture<SubSystemStub> dummy=new DummyErrorFuture<>(Utils.extractCause(ex));
 				ret.put(name, dummy);
 			}
 		}

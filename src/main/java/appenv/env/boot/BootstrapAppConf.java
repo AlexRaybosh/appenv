@@ -14,6 +14,7 @@ import com.google.gson.JsonObject;
 import appenv.db.DB;
 import appenv.env.AppScope;
 import appenv.env.AppConf;
+import appenv.env.AppEnv;
 import appenv.util.JsonUtils;
 import appenv.util.Legacy;
 import appenv.util.Utils;
@@ -164,7 +165,7 @@ public class BootstrapAppConf {
 				if (eval) 
 					break;
 			} catch (Exception e) {
-				if (logErrors) logerr(e.getMessage());
+				if (logErrors) logerr(false, e.getMessage());
 				if (abortOnError) throw e;
 			}
 		}
@@ -173,7 +174,7 @@ public class BootstrapAppConf {
 			properties=entry.getProperties();
 		}
 		if (Utils.isEmpty(envType)) {
-			envType=properties.getProperty("envType");
+			envType=properties==null?null:properties.getProperty("envType");
 		}
 		if (Utils.isEmpty(envType)) envType="localdev";
 		
@@ -203,6 +204,9 @@ public class BootstrapAppConf {
 		bootstrapConfig=JsonUtils.combine(arr);
 		
 		JsonObject myConf = JsonUtils.getJsonObject(bootstrapConfig, "appConf", appConfName);
+		Set<String> extAppNames=new HashSet<>();
+		if (appConfName!=null) extAppNames.add(appConfName);
+		myConf=handleExtended(extAppNames,bootstrapConfig,myConf);
 		JsonObject defConf= JsonUtils.getJsonObject(bootstrapConfig, "defaults");
 		JsonObject realConf=JsonUtils.combine(appenvLibConfig, defConf, myConf);
 		
@@ -242,20 +246,43 @@ public class BootstrapAppConf {
 	}
 
 
+	private JsonObject handleExtended(Set<String> extAppNames, JsonObject bootstrapConfig, JsonObject myConf) {
+		if (myConf==null) return null;
+		JsonObject conf=myConf;
+		for (JsonElement e : JsonUtils.getJsonArrayIterable(myConf, "extends")) {
+			String name=JsonUtils.getString(e);
+			if (name==null) continue;
+			if (extAppNames.contains(name)) continue;
+			extAppNames.add(name);
+			JsonObject child = JsonUtils.getJsonObject(bootstrapConfig, "appConf", name);
+			if (child==null) continue;
+			child=handleExtended(extAppNames, bootstrapConfig, child);
+			conf=JsonUtils.combine(child,conf);
+		}
+		return conf;
+	}
+
 	private AppConf initAppConf(DB db, JsonObject conf) throws SQLException, InterruptedException {
 		Integer id=null, envTypeId=null;
 		if (db!=null) {
-			envTypeId=Utils.toInteger(db.selectSingle("select id from env_type where name=?",false,envType));
-			id=Utils.toInteger(db.selectSingle("select id from app_conf a where a.name=? and a.env_type_id=?",false,appConfName,envTypeId));
-			if (id!=null) for (Object str : db.selectFirstColumn("select meta from app_conf_entry where app_conf_id=? order by position",false,id)) {
-				String cmetaStr=Utils.toString(str);
-				if (!Utils.isEmpty(cmetaStr)) {
-					JsonObject cmeta=JsonUtils.parseJsonObject(cmetaStr);
-					if (cmeta!=null) {
-						conf=JsonUtils.combine(conf,cmeta);
+			Boolean enableDBAppConf = JsonUtils.getBoolean(conf, "enableDatabaseAppConf");
+			if (enableDBAppConf==null) {
+				logerr("enableDatabaseAppConf json application property is not defined, assume it is true, and pick the env configuration up from the database");
+				enableDBAppConf=true;
+			}
+			if (enableDBAppConf) {
+				envTypeId=Utils.toInteger(db.selectSingle("select id from env_type where name=?",false,envType));
+				id=Utils.toInteger(db.selectSingle("select id from app_conf a where a.name=? and a.env_type_id=?",false,appConfName,envTypeId));
+				if (id!=null) for (Object str : db.selectFirstColumn("select meta from app_conf_entry where app_conf_id=? order by position",false,id)) {
+					String cmetaStr=Utils.toString(str);
+					if (!Utils.isEmpty(cmetaStr)) {
+						JsonObject cmeta=JsonUtils.parseJsonObject(cmetaStr);
+						if (cmeta!=null) {
+							conf=JsonUtils.combine(conf,cmeta);
+						}
 					}
 				}
-			}				
+			}
 		}
 		return new AppConf(id,appConfName,envTypeId, envType, conf);
 	}
@@ -311,7 +338,7 @@ public class BootstrapAppConf {
 	}
 
 
-	boolean checkShellEval(String shell, String expr) {
+	public boolean checkShellEval(String shell, String expr) {
 		if (Utils.isEmpty(expr)) return false;
 		List<String> lst=new ArrayList<>();
 		lst.add(shell==null?"/bin/bash":shell);
@@ -334,7 +361,7 @@ public class BootstrapAppConf {
 				out.close();
 				Legacy.jdk9_readAllBytes(in);
 				String errMsg=Utils.trim(new String(Legacy.jdk9_readAllBytes(err), StandardCharsets.UTF_8));
-				if (logErrors && !Utils.isEmpty(errMsg)) logerr(errMsg);
+				if (logErrors && !Utils.isEmpty(errMsg)) logerr(false, errMsg);
 			} finally {
 				exit=process.waitFor();
 			}
@@ -343,10 +370,12 @@ public class BootstrapAppConf {
 		}
 		return exit==0;
 	}
-	
 	public static void logerr(String msg) {
+		logerr(true, msg);
+	}
+	public static void logerr(boolean showFrames, String msg) {
 		if (Utils.isEmpty(msg)) return;
-		System.err.println("BOOTSTRAP: "+msg);
+		AppEnv.logerr(showFrames, "BOOTSTRAP: "+msg);
 	}
 	public final Properties getProperties() {
 		return properties;
@@ -368,11 +397,8 @@ public class BootstrapAppConf {
 
 
 	public static void logerr(String msg, Exception e) {
-		if (e!=null) {
-			e=Utils.extraceCause(e);
-		}
-		String m=msg==null?(e==null?"":e.getMessage()) : (msg+(e==null?"":(": "+e.getMessage())));
-		logerr(m);
+		if (Utils.isEmpty(msg) && e==null) return;
+		AppEnv.logerr("BOOTSTRAP:"+ (msg==null?"":msg) , e);
 	}
 
 

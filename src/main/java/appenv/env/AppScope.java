@@ -357,6 +357,6 @@ public class AppScope {
 		if (hasSubSystem(PROCESS_MAINTENANCE)) {
 			ProcessMaintenance pm=this.<ProcessMaintenance>getSubSystem(PROCESS_MAINTENANCE);
 			if (pm!=null) pm.updateAppVersion(version);
-		}	
+		}
 	}
 }

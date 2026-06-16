@@ -1,5 +1,6 @@
 package appenv.env.boot;
 
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -20,6 +21,7 @@ import org.apache.commons.codec.binary.Base64;
 
 import appenv.env.AppScope;
 import appenv.env.AppConf;
+import appenv.env.AppEnv;
 import appenv.util.Utils;
 
 public class AppSec {
@@ -106,16 +108,16 @@ public class AppSec {
 				} catch (Exception e) {
 					if (Utils.initBouncyCastle()) {						
 						try {
-							appScope.logerr("AES BC encryption failed to initialize, fallback to BC: "+e.getMessage());
+							AppEnv.logerr("AES BC encryption failed to initialize, fallback to BC: "+e.getMessage());
 							aesEncoder=Cipher.getInstance("AES/CBC/PKCS5PADDING","BC");
 							aesDecoder=Cipher.getInstance("AES/CBC/PKCS5PADDING", "BC");
 							aesEncoder.init(Cipher.ENCRYPT_MODE, aesSecretKeySpec,aesIvParameterSpec);
 							aesDecoder.init(Cipher.DECRYPT_MODE, aesSecretKeySpec,aesIvParameterSpec);
 						} catch (Exception ee) {
-							appScope.logerr("AES encryption failed to initialize", ee);
+							AppEnv.logerr("AES encryption failed to initialize", ee);
 						}
 					} else {
-						appScope.logerr("AES encryption failed to initialize", e);
+						AppEnv.logerr("AES encryption failed to initialize", e);
 					}
 				}
 			}
@@ -126,11 +128,11 @@ public class AppSec {
 				} catch (Exception e) {
 					if (Utils.initBouncyCastle()) {
 						try {
-							appScope.logerr("RSA BC decoder failed to initialize, fallback to BC: "+e.getMessage());
+							AppEnv.logerr("RSA BC decoder failed to initialize, fallback to BC: "+e.getMessage());
 							rsaPublicDecoder=Cipher.getInstance("RSA","BC");
 							rsaPublicDecoder.init(Cipher.DECRYPT_MODE, rsaPublicKey);
 						} catch (Exception ee) {
-							appScope.logerr("RSA decoder failed to initialize", ee);
+							AppEnv.logerr("RSA decoder failed to initialize", ee);
 						}
 					} else {
 						BootstrapAppConf.logerr("RSA decoder failed to initialize", e);
@@ -177,6 +179,25 @@ public class AppSec {
 		String rsaPrivatePKCS8Base64 = properties.getProperty("rsaPrivatePKCS8Base64");
 		String rsaPublicPKCS8Base64 = properties.getProperty("rsaPublicPKCS8Base64");
 
+		if (rsaPrivatePKCS8Base64!=null) rsaPrivatePKCS8Base64=rsaPrivatePKCS8Base64.trim();
+		if (rsaPublicPKCS8Base64!=null) rsaPublicPKCS8Base64=rsaPublicPKCS8Base64.trim();
+		
+		if (!Utils.isEmpty(rsaPrivatePKCS8Base64)) {
+			// Could it be base64 recoded
+			try {
+				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPrivatePKCS8Base64), StandardCharsets.UTF_8);
+				rsaPrivatePKCS8Base64=tmp;
+			} catch (Exception e) {
+			}
+		}
+		if (!Utils.isEmpty(rsaPublicPKCS8Base64)) {
+			// Could it be base64 recoded
+			try {
+				String tmp=new String(java.util.Base64.getDecoder().decode(rsaPublicPKCS8Base64), StandardCharsets.UTF_8);
+				rsaPublicPKCS8Base64=tmp;
+			} catch (Exception e) {
+			}
+		}		
 		if (!Utils.isEmpty(aesIvBase64) && !Utils.isEmpty(aesKeyBase64)) {
 			aesSecretKeySpec=new SecretKeySpec(Base64.decodeBase64(aesKeyBase64.trim()), "AES") ;
 			aesIvParameterSpec=new IvParameterSpec(Base64.decodeBase64(aesIvBase64.trim()));		
@@ -198,7 +219,11 @@ public class AppSec {
 
 			
 			if (!Utils.isEmpty(rsaPrivatePKCS8Base64)) {
-				String clean = rsaPrivatePKCS8Base64.trim().replace("-----BEGIN PRIVATE KEY-----","").replace("-----END PRIVATE KEY-----", "").replace("\n", "").replace("\r", "");
+				String clean = rsaPrivatePKCS8Base64.trim().replaceAll("[-]+BEGIN\\s(?:RSA\\s+)PRIVATE KEY[-]+","");
+				//-----BEGIN PRIVATE KEY-----
+				clean=clean.replaceAll("[-]+END\\s+(?:RSA\\s+)PRIVATE\\s+KEY[-]+", "");
+				clean=clean.replace("\n", "");
+				clean=clean.replace("\r", "");
 				byte[] rsaPrivatePKCS8 = Base64.decodeBase64(clean);
 				PKCS8EncodedKeySpec spec=new PKCS8EncodedKeySpec(rsaPrivatePKCS8);				
 				try {

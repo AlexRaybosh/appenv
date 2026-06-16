@@ -20,7 +20,10 @@ public class BootEntryShellEval extends BootEntry {
 	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String shellArgument=JsonUtils.getString(conf, "shellArgument");
 		if (Utils.isEmpty(shellArgument)) return false;
-		
+		if (BootEntry.isWindows) {
+			BootstrapAppConf.logerr("skipping " +conf+ ", windows detected");
+			return false;
+		}
 		boolean abortOnExecutionError=JsonUtils.getBool(conf, "abortOnExecutionError");
 
 		ProcessBuilder pb=new ProcessBuilder(new String[] {bootstrapAppConf.shell, "-c", shellArgument} );
@@ -56,7 +59,7 @@ public class BootEntryShellEval extends BootEntry {
 			return false;
 		}
 
-		if (properties!=null && properties.size()==0 && bootstrapAppConf.logErrors) BootstrapAppConf.logerr("Empty result from "+conf);
+		if (properties!=null && properties.size()==0 && bootstrapAppConf.logErrors) BootstrapAppConf.logerr(false, "Empty result from "+conf);
 		return properties!=null && properties.size()>0;
 	}
 

@@ -74,9 +74,11 @@ public class Init {
 			if ("core".equals(dbName)) continue;
 			JsonObject dbConf = JsonUtils.getJsonObject(e.getValue());
 			if (dbConf==null) continue;
+			boolean optional=JsonUtils.getBoolean(false,  dbConf, "optional");
+			
 			String dburl=JsonUtils.getString(dbConf,"properties", "dburl");
 			if (dburl==null) {
-				BootstrapAppConf.logerr("Skipping DB "+dbName+", no dburl available");
+				if (!optional) BootstrapAppConf.logerr("Skipping DB "+dbName+", no dburl available");
 				continue;
 			}
 			String dbuser=JsonUtils.getString(dbConf,"properties", "dbuser");

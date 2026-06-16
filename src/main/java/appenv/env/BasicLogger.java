@@ -12,6 +12,7 @@ public class BasicLogger {
 	public void logerr(List<String> frames, String msg, Throwable e) {
 		logerr(frames, msg, e, false);
 	}
+	
 	public void logerr(List<String> frames, String msg, Throwable e, boolean escalate) {
 		StringBuilder sb=new StringBuilder(formatedDate());
 		sb.append(": ");
@@ -37,6 +38,5 @@ public class BasicLogger {
 
 	public void logout(String msg) {
 		System.out.println(msg);
-		
 	}
 }

@@ -17,12 +17,27 @@ import java.util.Properties;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import appenv.env.AppScope;
 import appenv.util.JsonUtils;
 import appenv.util.Legacy;
 import appenv.util.Utils;
 
-public class BootEntryFileExec extends BootEntry {
+public class BootEntryResourceExec extends BootEntry {
 	private Properties properties;
+	
+	private static String readPropsProvider(String name) {
+		InputStream is=null;
+		try {
+			is=AppScope.class.getClassLoader().getResourceAsStream(name);
+			if (is==null) is=AppScope.class.getClassLoader().getResourceAsStream("/"+name);
+			if (is==null) return null;
+			return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+		} catch (Exception e) {
+			Utils.rethrowRuntimeException(e);
+		} finally {
+			Utils.close(is);
+		}
+	}
 	@Override
 	public boolean eval(BootstrapAppConf bootstrapAppConf, JsonObject conf) {
 		String fileName=JsonUtils.getString(conf, "file");

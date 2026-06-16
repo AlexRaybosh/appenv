@@ -25,7 +25,7 @@ public class BootEntryFileRead extends BootEntry {
 
 		if (!Files.exists(path)) {
 			if (abortOnFileMissing) throw new RuntimeException(fileName+" in "+conf+" is missing");
-			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(fileName+" in "+conf+" is missing");
+			else if (bootstrapAppConf.logErrors) BootstrapAppConf.logerr(false, fileName+" in "+conf+" is missing");
 			return false;
 		}
 		
