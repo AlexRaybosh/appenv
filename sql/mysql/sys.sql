@@ -85,11 +85,11 @@ create table if not exists system_process (
 	id bigint not null,
     is_active bool not null,
     app_conf_id int null,
+    hostname varchar(300) not null,
     app_conf_name varchar(300) null,
     app_version varchar(300) null, -- need to add support for a version string
     env_type_id int null,
     env_type varchar(100) null,   
-    hostname varchar(300) not null,
     pid bigint null,
     cmd mediumtext null,
     cluster_member_id int null,

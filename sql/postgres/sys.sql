@@ -121,10 +121,10 @@ CREATE TABLE IF NOT EXISTS unique_env_lock (
   env_type varchar(100) NOT NULL,
   env_type_id int null,
   system_process_id BIGINT NOT NULL,
-  create_ms BIGINT unsigned NOT NULL,
-  last_ms BIGINT unsigned NOT NULL,
+  create_ms BIGINT NOT NULL,
+  last_ms BIGINT NOT NULL,
   PRIMARY KEY(id)
-  ) engine=InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4;
+  );
 create unique index unique_env_lock_idx on unique_env_lock (lock_name, env_type);
 create index unique_env_lock_last_idx on unique_env_lock (last_ms);
 create index unique_env_lock_proc_idx on unique_env_lock (system_process_id);
